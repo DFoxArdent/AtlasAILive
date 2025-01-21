@@ -94,44 +94,16 @@ export const QuestionInput = ({ onSend, disabled, placeholder, clearOnSend, conv
     const sendQuestionDisabled = disabled || !question.trim();
 
     const ImagePreview = () => (
-        <div
-            className={styles.uploadPreviewContainer}
-            style={{
-                position: 'relative',
-                maxWidth: 'calc(100% - 120px)',
-                marginRight: '10px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-            }}
-        >
+        <div className={styles.uploadPreviewContainer}>
             <img
                 className={styles.uploadedImage}
                 src={base64Image || ''}
                 alt="Uploaded Preview"
-                style={{ maxHeight: '100px', maxWidth: '100%', objectFit: 'contain' }}
             />
             <button
                 className={styles.removeImageButton}
                 onClick={removeImage}
                 aria-label="Remove Uploaded Image"
-                style={{
-                    position: 'absolute',
-                    top: '5px',
-                    right: '35px', /* Adjusted position to move the button further left */
-                    backgroundColor: 'rgba(255, 0, 0, 0.8)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '50%',
-                    width: '24px',
-                    height: '24px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    fontSize: '16px',
-                    lineHeight: '1',
-                }}
             >
                 &times;
             </button>
@@ -152,38 +124,48 @@ export const QuestionInput = ({ onSend, disabled, placeholder, clearOnSend, conv
                 onPaste={onPaste}
             />
             {!OYD_ENABLED && (
-                <div className={styles.fileInputContainer}>
-                    <input
-                        type="file"
-                        id="fileInput"
-                        onChange={handleImageUpload}
-                        accept="image/*"
-                        className={styles.fileInput}
-                    />
-                    <label htmlFor="fileInput" className={styles.fileLabel} aria-label="Upload Image">
-                        <FontIcon
-                            className={styles.fileIcon}
-                            iconName="PhotoCollection"
-                            aria-label="Upload Image Icon"
+                <div className={styles.fileAndSendContainer}>
+                    {/* Image Upload */}
+                    <div className={styles.fileInputContainer}>
+                        <input
+                            type="file"
+                            id="imageInput"
+                            onChange={handleImageUpload}
+                            accept="image/*"
+                            className={styles.fileInput}
                         />
-                    </label>
+                        <label
+                            htmlFor="imageInput"
+                            className={styles.fileLabel}
+                            aria-label="Upload Image"
+                            title="Click here to upload an image"
+                        >
+                            <FontIcon
+                                className={styles.fileIcon}
+                                iconName="PhotoCollection"
+                                aria-label="Upload Image Icon"
+                            />
+                        </label>
+                    </div>
+
+                    {/* Send Button */}
+                    <div
+                        className={styles.questionInputSendButtonContainer}
+                        role="button"
+                        tabIndex={0}
+                        aria-label="Ask Question Button"
+                        onClick={sendQuestion}
+                        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ' ? sendQuestion() : null)}
+                    >
+                        {sendQuestionDisabled ? (
+                            <SendRegular className={styles.questionInputSendButtonDisabled} />
+                        ) : (
+                            <img src={Send} className={styles.questionInputSendButton} alt="Send Button" />
+                        )}
+                    </div>
                 </div>
             )}
             {base64Image && <ImagePreview />}
-            <div
-                className={styles.questionInputSendButtonContainer}
-                role="button"
-                tabIndex={0}
-                aria-label="Ask Question Button"
-                onClick={sendQuestion}
-                onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ' ? sendQuestion() : null)}
-            >
-                {sendQuestionDisabled ? (
-                    <SendRegular className={styles.questionInputSendButtonDisabled} />
-                ) : (
-                    <img src={Send} className={styles.questionInputSendButton} alt="Send Button" />
-                )}
-            </div>
             <div className={styles.questionInputBottomBorder} />
         </Stack>
     );
