@@ -123,50 +123,49 @@ export const QuestionInput = ({ onSend, disabled, placeholder, clearOnSend, conv
                 onKeyDown={onEnterPress}
                 onPaste={onPaste}
             />
-            {!OYD_ENABLED && (
-                <div className={styles.fileAndSendContainer}>
-                    {/* Image Upload */}
-                    <div className={styles.fileInputContainer}>
-                        <input
-                            type="file"
-                            id="imageInput"
-                            onChange={handleImageUpload}
-                            accept="image/*"
-                            className={styles.fileInput}
-                        />
-                        <label
-                            htmlFor="imageInput"
-                            className={styles.fileLabel}
-                            aria-label="Upload Image"
-                            title="Click here to upload an image"
-                        >
-                            <FontIcon
-                                className={styles.fileIcon}
-                                iconName="PhotoCollection"
-                                aria-label="Upload Image Icon"
-                            />
-                        </label>
-                    </div>
-
-                    {/* Send Button */}
-                    <div
-                        className={styles.questionInputSendButtonContainer}
-                        role="button"
-                        tabIndex={0}
-                        aria-label="Ask Question Button"
-                        onClick={sendQuestion}
-                        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ' ? sendQuestion() : null)}
+            <div className={styles.fileAndSendContainer}>
+                {/* Image Upload */}
+                <div className={styles.fileInputContainer}>
+                    <input
+                        type="file"
+                        id="imageInput"
+                        onChange={handleImageUpload}
+                        accept="image/*"
+                        className={styles.fileInput}
+                    />
+                    <label
+                        htmlFor="imageInput"
+                        className={styles.fileLabel}
+                        aria-label="Upload Image"
+                        title="Click here to upload an image"
                     >
-                        {sendQuestionDisabled ? (
-                            <SendRegular className={styles.questionInputSendButtonDisabled} />
-                        ) : (
-                            <img src={Send} className={styles.questionInputSendButton} alt="Send Button" />
-                        )}
-                    </div>
+                        <FontIcon
+                            className={styles.fileIcon}
+                            iconName="PhotoCollection"
+                            aria-label="Upload Image Icon"
+                        />
+                    </label>
                 </div>
-            )}
+
+                {/* Send Button */}
+                <div
+                    className={styles.questionInputSendButtonContainer}
+                    role="button"
+                    tabIndex={0}
+                    aria-label="Ask Question Button"
+                    onClick={sendQuestion}
+                    onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ' ? sendQuestion() : null)}
+                >
+                    {sendQuestionDisabled ? (
+                        <SendRegular className={styles.questionInputSendButtonDisabled} />
+                    ) : (
+                        <img src={Send} className={styles.questionInputSendButton} alt="Send Button" />
+                    )}
+                </div>
+            </div>
             {base64Image && <ImagePreview />}
             <div className={styles.questionInputBottomBorder} />
         </Stack>
     );
-};
+}; 
+
