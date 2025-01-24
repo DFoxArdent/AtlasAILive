@@ -801,7 +801,7 @@ const Chat = () => {
                 <h2 className={styles.chatEmptyStateSubtitle}>
                   This chatbot does <strong>not</strong> have access to additional information about Ardent Management.
                   <br />
-                  Click the button in the top right to switch to the Ardent knowledge base.
+                  Click the button in the top right to change to the GPT-4o knowledge base.
                 </h2>
               </Stack>
             ) : (
@@ -971,7 +971,7 @@ const Chat = () => {
               </Stack>
               <QuestionInput
                 clearOnSend
-                placeholder="This is a non-ardent knowledge base containing information from GPT-4o. Type a new question..."
+                placeholder="This is the Ardent knowledge base. Type a new question..."
                 disabled={isLoading}
                 onSend={(question, id) => {
                   appStateContext?.state.isCosmosDBAvailable?.cosmosDB
