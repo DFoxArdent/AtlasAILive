@@ -34,9 +34,9 @@ export const SwitchAIButton: React.FC<{ url: string }> = ({ url }) => {
         <a
             href={url}
             className={styles.switchAIButtonRoot}
-            title="Switch to Atlas AI"
+            title="Switch to Chat GPT"
         >
-            Switch to Atlas AI
+            Switch to Chat GPT
         </a>
     );
 };
