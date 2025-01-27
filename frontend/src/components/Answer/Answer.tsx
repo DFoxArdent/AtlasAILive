@@ -14,6 +14,7 @@ import { AppStateContext } from '../../state/AppProvider';
 import { parseAnswer } from './AnswerParser';
 
 import styles from './Answer.module.css';
+import clipboardIcon from '../../assets/clipboard-list-solid.svg';
 
 interface Props {
     answer: AskResponse
@@ -288,14 +289,15 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
                         </Stack.Item>
                         <Stack.Item grow={false} className={styles.answerHeader}>
                             <Stack horizontal horizontalAlign="end" tokens={{ childrenGap: 8 }}>
-                                <FontIcon
+                                <img
+                                    src={clipboardIcon}
+                                    alt="Copy to clipboard"
                                     aria-hidden="false"
                                     aria-label="Copy to clipboard"
-                                    iconName="ClipboardList"
                                     className={styles.copyIcon}
                                     onClick={handleCopyClick}
                                     title="Click here to copy the content"
-                                    style={{ fontSize: '16px', color: '#323130', cursor: 'pointer' }}
+                                    style={{ width: '20px', height: '19px', cursor: 'pointer' }}
                                 />
                                 {FEEDBACK_ENABLED && answer.message_id !== undefined && (
                                     <>
