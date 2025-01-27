@@ -80,7 +80,7 @@ const Layout = () => {
                         />
                     </a>
                     <Stack horizontal tokens={{ childrenGap: 4 }} className={styles.shareButtonContainer}>
-                        <SwitchAIButton url="atlas-ai-gpt.azurewebsites.net" />
+                        <SwitchAIButton url="https://atlas-ai-gpt.azurewebsites.net/" />
                         {(appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured) &&
                             <HistoryButton onClick={handleHistoryClick} text={appStateContext?.state?.isChatHistoryOpen ? hideHistoryLabel : showHistoryLabel} />
                         }
