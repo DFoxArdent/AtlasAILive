@@ -801,7 +801,7 @@ const Chat = () => {
                 <h2 className={styles.chatEmptyStateSubtitle}>
                   This chatbot is configured with additional knowledge about Ardent Management.
                   <br />
-                  Click the button in the top right to change to the GPT-4o knowledge base.
+                  Click the button in the top right to switch to the GPT-4o knowledge base.
                 </h2>
               </Stack>
             ) : (
