@@ -35,6 +35,9 @@ from backend.utils import (
     convert_to_pf_format,
     format_pf_non_streaming_response,
 )
+import PyPDF2
+from io import BytesIO
+import os, uuid, docx2txt, logging
 
 bp = Blueprint("routes", __name__, static_folder="static", template_folder="static")
 
@@ -58,6 +61,49 @@ def create_app():
     
     return app
 
+@bp.route("/upload", methods=["POST"])
+async def upload_document():
+    if "file" not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    file = (await request.files)["file"]
+    filename = file.filename.lower()
+    file_bytes = await file.read()
+    extracted_text = ""
+
+    if filename.endswith(".pdf"):
+        try:
+            pdf_reader = PyPDF2.PdfReader(BytesIO(file_bytes))
+            pages_text = [page.extract_text() or "" for page in pdf_reader.pages]
+            extracted_text = "\n".join(pages_text)
+        except Exception as e:
+            logging.exception("Failed to process PDF")
+            return jsonify({"error": f"Failed to process PDF: {str(e)}"}), 400
+    elif filename.endswith(".docx"):
+        try:
+            temp_filename = f"/tmp/{uuid.uuid4()}.docx"
+            with open(temp_filename, "wb") as temp_file:
+                temp_file.write(file_bytes)
+            extracted_text = docx2txt.process(temp_filename)
+            os.remove(temp_filename)
+        except Exception as e:
+            logging.exception("Failed to process DOCX")
+            return jsonify({"error": f"Failed to process DOCX: {str(e)}"}), 400
+    elif filename.endswith(".txt"):
+        try:
+            extracted_text = file_bytes.decode("utf-8", errors="ignore")
+        except Exception as e:
+            logging.exception("Failed to process TXT")
+            return jsonify({"error": f"Failed to process TXT: {str(e)}"}), 400
+    else:
+        return jsonify({"error": "Unsupported file type"}), 400
+
+    # Chunk the extracted text using ~48,000 characters per chunk (roughly 12,000 tokens)
+    def chunk_text(text: str, max_chars: int = 48000) -> list[str]:
+        return [text[i: i + max_chars] for i in range(0, len(text), max_chars)]
+
+    chunks = chunk_text(extracted_text, 48000)
+    return jsonify({"chunks": chunks})
 
 @bp.route("/")
 async def index():
