@@ -38,6 +38,7 @@ from backend.utils import (
 import PyPDF2
 from io import BytesIO
 import os, uuid, docx2txt, logging
+import tempfile
 
 bp = Blueprint("routes", __name__, static_folder="static", template_folder="static")
 
@@ -63,12 +64,13 @@ def create_app():
 
 @bp.route("/upload", methods=["POST"])
 async def upload_document():
-    if "file" not in request.files:
+    files = await request.files  # Await the files collection
+    if "file" not in files:
         return jsonify({"error": "No file uploaded"}), 400
 
-    file = (await request.files)["file"]
+    file = files["file"]
     filename = file.filename.lower()
-    file_bytes = await file.read()
+    file_bytes = file.read()  # No await here, since it's already bytes
     extracted_text = ""
 
     if filename.endswith(".pdf"):
@@ -81,8 +83,8 @@ async def upload_document():
             return jsonify({"error": f"Failed to process PDF: {str(e)}"}), 400
     elif filename.endswith(".docx"):
         try:
-            temp_filename = f"/tmp/{uuid.uuid4()}.docx"
-            with open(temp_filename, "wb") as temp_file:
+            with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as temp_file:
+                temp_filename = temp_file.name
                 temp_file.write(file_bytes)
             extracted_text = docx2txt.process(temp_filename)
             os.remove(temp_filename)

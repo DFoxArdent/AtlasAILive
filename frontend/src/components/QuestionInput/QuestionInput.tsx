@@ -106,7 +106,7 @@ export const QuestionInput = ({
       try {
         const formData = new FormData();
         formData.append('file', documentFile);
-        const response = await fetch('http://localhost:8000/upload', {
+        const response = await fetch('http://127.0.0.1:50505/upload', {
           method: 'POST',
           body: formData,
         });
