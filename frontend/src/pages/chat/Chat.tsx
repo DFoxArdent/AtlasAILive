@@ -70,6 +70,8 @@ const Chat = () => {
     const [errorMsg, setErrorMsg] = useState<ErrorMessage | null>();
     const [logo, setLogo] = useState('');
     const [answerId, setAnswerId] = useState<string>('');
+    // New state to track document processing
+    const [isProcessingDocument, setIsProcessingDocument] = useState(false);
 
     const errorDialogContentProps = {
         type: DialogType.close,
@@ -769,7 +771,8 @@ const Chat = () => {
             isLoading ||
             (messages && messages.length === 0) ||
             clearingChat ||
-            appStateContext?.state.chatHistoryLoadingState === ChatHistoryLoadingState.Loading
+            appStateContext?.state.chatHistoryLoadingState === ChatHistoryLoadingState.Loading ||
+            isProcessingDocument
         );
     };
 
@@ -937,7 +940,8 @@ const Chat = () => {
                                     aria-label="Stop generating"
                                     tabIndex={0}
                                     onClick={stopGenerating}
-                                    onKeyDown={e => (e.key === 'Enter' || e.key === ' ' ? stopGenerating() : null)}>
+                                    onKeyDown={e => (e.key === 'Enter' || e.key === ' ' ? stopGenerating() : null)}
+                                >
                                     <SquareRegular className={styles.stopGeneratingIcon} aria-hidden="true" />
                                     <span className={styles.stopGeneratingText} aria-hidden="true">
                                         Stop generating
@@ -1040,6 +1044,8 @@ const Chat = () => {
                                 conversationId={
                                     appStateContext?.state.currentChat?.id ? appStateContext?.state.currentChat?.id : undefined
                                 }
+                                isProcessingDocument={isProcessingDocument}
+                                setIsProcessingDocument={setIsProcessingDocument}
                             />
                         </Stack>
                     </div>
@@ -1102,7 +1108,7 @@ const Chat = () => {
                             </Stack>
                             <Stack horizontalAlign="space-between">
                                 {appStateContext?.state?.answerExecResult[answerId]?.map((execResult: ExecResults, index) => (
-                                    <Stack className={styles.exectResultList} verticalAlign="space-between">
+                                    <Stack className={styles.exectResultList} verticalAlign="space-between" key={index}>
                                         <>
                                             <span>Intent:</span> <p>{execResult.intent}</p>
                                         </>

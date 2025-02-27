@@ -1,5 +1,5 @@
 ﻿import { useContext, useState, useRef } from 'react';
-import { FontIcon, Stack, TextField } from '@fluentui/react';
+import { FontIcon, Stack, TextField, Spinner } from '@fluentui/react';
 import { SendRegular } from '@fluentui/react-icons';
 
 import Send from '../../assets/Send.svg';
@@ -16,6 +16,8 @@ interface Props {
     placeholder?: string;
     clearOnSend?: boolean;
     conversationId?: string;
+    isProcessingDocument?: boolean;
+    setIsProcessingDocument?: (value: boolean) => void;
 }
 
 export const QuestionInput = ({
@@ -24,6 +26,8 @@ export const QuestionInput = ({
     placeholder,
     clearOnSend,
     conversationId,
+    isProcessingDocument,
+    setIsProcessingDocument,
 }: Props) => {
     const [question, setQuestion] = useState<string>('');
     const [base64Image, setBase64Image] = useState<string | null>(null);
@@ -108,6 +112,9 @@ export const QuestionInput = ({
         let questionContent: ChatMessage['content'];
 
         if (documentFile) {
+            // Set processing state if provided
+            if (setIsProcessingDocument) setIsProcessingDocument(true);
+
             let documentChunks: string[] | null = null;
             try {
                 const formData = new FormData();
@@ -121,6 +128,9 @@ export const QuestionInput = ({
                 documentChunks = data.chunks;
             } catch (error) {
                 console.error('Error processing document:', error);
+            } finally {
+                // Reset processing state
+                if (setIsProcessingDocument) setIsProcessingDocument(false);
             }
 
             // Add a preview message (display-only) to show the uploaded document filename.
@@ -179,10 +189,19 @@ export const QuestionInput = ({
     };
 
     // Determine if send button should be disabled (based on typed text only, as before)
-    const sendQuestionDisabled = disabled || !question.trim();
+    const sendQuestionDisabled =
+        disabled || (!question.trim() && !base64Image && !documentFile) || (isProcessingDocument ?? false);
 
     return (
+        // Remove the inline style and rely on .questionInputContainer { position: relative; } in CSS
         <Stack horizontal className={styles.questionInputContainer}>
+            {/* Spinner is absolutely positioned in CSS, so just render it here. */}
+            {isProcessingDocument && (
+                <div className={styles.spinnerOverlay}>
+                    <Spinner label="Processing document..." />
+                </div>
+            )}
+
             <TextField
                 className={styles.questionInputTextArea}
                 placeholder={placeholder}
@@ -194,6 +213,7 @@ export const QuestionInput = ({
                 onKeyDown={(event) => event.key === 'Enter' && !event.shiftKey && sendQuestion()}
                 onPaste={onPaste}
             />
+
             <div className={styles.fileAndSendContainer}>
                 {/* IMAGE Upload */}
                 <div className={styles.fileInputContainer}>
@@ -255,18 +275,12 @@ export const QuestionInput = ({
                     tabIndex={0}
                     aria-label="Ask Question Button"
                     onClick={sendQuestion}
-                    onKeyDown={(e) =>
-                        e.key === 'Enter' || e.key === ' ' ? sendQuestion() : null
-                    }
+                    onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ' ? sendQuestion() : null)}
                 >
                     {sendQuestionDisabled ? (
                         <SendRegular className={styles.questionInputSendButtonDisabled} />
                     ) : (
-                        <img
-                            src={Send}
-                            className={styles.questionInputSendButton}
-                            alt="Send Button"
-                        />
+                        <img src={Send} className={styles.questionInputSendButton} alt="Send Button" />
                     )}
                 </div>
             </div>
@@ -274,11 +288,7 @@ export const QuestionInput = ({
             {/* PREVIEW */}
             {base64Image && (
                 <div className={styles.uploadPreviewContainer}>
-                    <img
-                        className={styles.uploadedImage}
-                        src={base64Image}
-                        alt="Uploaded Preview"
-                    />
+                    <img className={styles.uploadedImage} src={base64Image} alt="Uploaded Preview" />
                     <button
                         className={styles.removeImageButton}
                         onClick={removeImage}

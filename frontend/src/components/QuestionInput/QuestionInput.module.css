@@ -11,6 +11,19 @@
     padding-right: 50px;
 }
 
+.spinnerOverlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000; /* Ensure it sits above everything */
+}
+
 .questionInputTextArea {
     width: calc(100% - 50px);
     line-height: 40px;
