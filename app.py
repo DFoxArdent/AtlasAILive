@@ -1,6 +1,7 @@
 import copy
 import json
 import os
+import tiktoken
 import logging
 import uuid
 import httpx
@@ -49,6 +50,7 @@ def create_app():
     app = Quart(__name__)
     app.register_blueprint(bp)
     app.config["TEMPLATES_AUTO_RELOAD"] = True
+    app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024
     
     @app.before_serving
     async def init():
@@ -62,15 +64,44 @@ def create_app():
     
     return app
 
+def count_tokens(text: str) -> int:
+    return len(ENCODER.encode(text))
+
+
+def chunk_text_by_tokens(text: str, max_tokens: int) -> list[str]:
+    words = text.split()
+    chunks = []
+    current_chunk = []
+    current_tokens = 0
+
+    for word in words:
+        word_tokens = count_tokens(word + " ")  # Include space for separation
+        if current_tokens + word_tokens > max_tokens:
+            chunks.append(" ".join(current_chunk))
+            current_chunk = [word]
+            current_tokens = word_tokens
+        else:
+            current_chunk.append(word)
+            current_tokens += word_tokens
+
+    if current_chunk:
+        chunks.append(" ".join(current_chunk))
+    
+    return chunks
+
+TOKEN_LIMIT = 40000
+ENCODER = tiktoken.get_encoding("cl100k_base")
+
 @bp.route("/upload", methods=["POST"])
 async def upload_document():
-    files = await request.files  # Await the files collection
+    files = await request.files  # 1) Must await request.files
     if "file" not in files:
         return jsonify({"error": "No file uploaded"}), 400
 
     file = files["file"]
     filename = file.filename.lower()
-    file_bytes = file.read()  # No await here, since it's already bytes
+    file_bytes = file.read()  # 2) Synchronously read the file bytes
+
     extracted_text = ""
 
     if filename.endswith(".pdf"):
@@ -100,12 +131,9 @@ async def upload_document():
     else:
         return jsonify({"error": "Unsupported file type"}), 400
 
-    # Chunk the extracted text using ~48,000 characters per chunk (roughly 12,000 tokens)
-    def chunk_text(text: str, max_chars: int = 48000) -> list[str]:
-        return [text[i: i + max_chars] for i in range(0, len(text), max_chars)]
-
-    chunks = chunk_text(extracted_text, 48000)
+    chunks = chunk_text_by_tokens(extracted_text, TOKEN_LIMIT)
     return jsonify({"chunks": chunks})
+
 
 @bp.route("/")
 async def index():

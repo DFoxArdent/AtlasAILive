@@ -12,3 +12,5 @@ gunicorn==20.1.0
 pydantic-settings==2.2.1
 docx2txt
 PyPDF2
+tiktoken
+faiss-cpu
