@@ -112,7 +112,6 @@ export const QuestionInput = ({
         let questionContent: ChatMessage['content'];
 
         if (documentFile) {
-            // Set processing state if provided
             if (setIsProcessingDocument) setIsProcessingDocument(true);
 
             let documentChunks: string[] | null = null;
@@ -129,28 +128,26 @@ export const QuestionInput = ({
             } catch (error) {
                 console.error('Error processing document:', error);
             } finally {
-                // Reset processing state
                 if (setIsProcessingDocument) setIsProcessingDocument(false);
             }
 
-            // Add a preview message (display-only) to show the uploaded document filename.
-            // This message is sent silently so it is only rendered in the UI (not sent to AI).
+            // Document preview message (silent)
             const previewMessage = `[Document Preview]: ${documentFile.name}`;
             await onSend(previewMessage, conversationId, true);
 
             if (documentChunks && documentChunks.length > 0) {
-                // Send each document chunk as a silent message for internal processing.
+                // Send each chunk as a silent message
                 for (const chunk of documentChunks) {
                     const silentMessage = `[Document Content]: ${chunk}`;
                     await onSend(silentMessage, conversationId, true);
                 }
-                // Then send the user's typed message as the final (visible) message.
+                // Then the user’s typed question
                 await onSend(trimmedQuestion, conversationId, false);
                 removeUpload();
                 if (clearOnSend) setQuestion('');
                 return;
             }
-            // If no chunks were extracted, simply send the user's trimmed message.
+            // If no chunks, just send the user’s text
             questionContent = trimmedQuestion;
         } else if (base64Image) {
             questionContent = [
@@ -188,14 +185,11 @@ export const QuestionInput = ({
         }
     };
 
-    // Determine if send button should be disabled (based on typed text only, as before)
     const sendQuestionDisabled =
         disabled || (!question.trim() && !base64Image && !documentFile) || (isProcessingDocument ?? false);
 
     return (
-        // Remove the inline style and rely on .questionInputContainer { position: relative; } in CSS
         <Stack horizontal className={styles.questionInputContainer}>
-            {/* Spinner is absolutely positioned in CSS, so just render it here. */}
             {isProcessingDocument && (
                 <div className={styles.spinnerOverlay}>
                     <Spinner label="Processing document..." />
@@ -248,7 +242,7 @@ export const QuestionInput = ({
                         accept=".pdf,.docx,.txt"
                         className={styles.fileInput}
                         ref={documentInputRef}
-                        disabled={!conversationId} // disable if no conversation exists
+                        disabled={!conversationId}
                     />
                     <label
                         htmlFor="documentInput"
@@ -285,7 +279,7 @@ export const QuestionInput = ({
                 </div>
             </div>
 
-            {/* PREVIEW */}
+            {/* IMAGE PREVIEW */}
             {base64Image && (
                 <div className={styles.uploadPreviewContainer}>
                     <img className={styles.uploadedImage} src={base64Image} alt="Uploaded Preview" />
@@ -293,11 +287,15 @@ export const QuestionInput = ({
                         className={styles.removeImageButton}
                         onClick={removeImage}
                         aria-label="Remove Uploaded Image"
+                        // Disable if processing
+                        disabled={isProcessingDocument}
                     >
                         &times;
                     </button>
                 </div>
             )}
+
+            {/* DOCUMENT PREVIEW */}
             {documentFile && (
                 <div className={styles.uploadPreviewContainer}>
                     <p className={styles.uploadedDocument}>{documentFile.name}</p>
@@ -305,6 +303,8 @@ export const QuestionInput = ({
                         className={styles.removeImageButton}
                         onClick={() => setDocumentFile(null)}
                         aria-label="Remove Uploaded Document"
+                        // Disable if processing
+                        disabled={isProcessingDocument}
                     >
                         &times;
                     </button>
