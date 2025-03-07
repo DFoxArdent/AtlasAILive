@@ -821,8 +821,7 @@ const Chat = () => {
                         ) : (
                             <div className={styles.chatMessageStream} style={{ marginBottom: isLoading ? '40px' : '0px' }} role="log">
                                 {messages
-                                    // Hide any user message that starts with "[Document Content]:"
-                                    // so it doesn't appear in the chat container.
+                                    // Hide any user message that starts with "[Document Content]:" (for older messages)
                                     .filter((m) => {
                                         if (m.role === 'user' && typeof m.content === 'string' && m.content.startsWith('[Document Content]:')) {
                                             return false;
@@ -852,10 +851,10 @@ const Chat = () => {
                                                 <div className={styles.chatMessageUser} tabIndex={0}>
                                                     <div className={styles.chatMessageUserMessage}>
                                                         {typeof answer.content === 'string' && answer.content ? (
-                                                            answer.content
+                                                            // Remove the hidden document chunk content before displaying
+                                                            answer.content.replace(/\[hidden-document-content\][\s\S]*?\[\/hidden-document-content\]\n?/, '')
                                                         ) : Array.isArray(answer.content) ? (
                                                             <>
-                                                                {/* If array content: possibly text + image. */}
                                                                 {answer.content.find(
                                                                     (part): part is { type: 'text'; text: string } => part.type === 'text'
                                                                 )?.text}
@@ -891,13 +890,13 @@ const Chat = () => {
                                                                 feedback: answer.feedback,
                                                                 exec_results: execResults,
                                                             }}
-                                                            onCitationClicked={c => onShowCitation(c)}
+                                                            onCitationClicked={(c) => onShowCitation(c)}
                                                             onExectResultClicked={() => onShowExecResult(answerId)}
                                                         />
                                                     )}
                                                 </div>
                                             );
-                                        } else if (answer.role === ERROR) {
+                                        } else if (answer.role === 'error') {
                                             return (
                                                 <div className={styles.chatMessageError}>
                                                     <Stack horizontal className={styles.chatMessageErrorContent}>
@@ -912,6 +911,8 @@ const Chat = () => {
                                         }
                                         return null;
                                     })}
+
+
                                 {showLoadingMessage && (
                                     <>
                                         <div className={styles.chatMessageGpt}>

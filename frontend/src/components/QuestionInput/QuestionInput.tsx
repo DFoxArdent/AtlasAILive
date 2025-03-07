@@ -48,6 +48,8 @@ export const QuestionInput = ({
         try {
             const resizedBase64 = await resizeImage(file, 800, 800);
             setBase64Image(resizedBase64);
+            // Clear any selected document when an image is uploaded.
+            setDocumentFile(null);
         } catch (error) {
             console.error('Error during image upload:', error);
         }
@@ -63,6 +65,8 @@ export const QuestionInput = ({
                     try {
                         const resizedBase64 = await resizeImage(file, 800, 800);
                         setBase64Image(resizedBase64);
+                        // Clear any selected document when an image is pasted.
+                        setDocumentFile(null);
                     } catch (error) {
                         console.error('Error during image paste:', error);
                     }
@@ -100,11 +104,12 @@ export const QuestionInput = ({
         // Trim the user's typed question
         const trimmedQuestion = question.trim();
 
-        // If it's the first message and a document is attached, show an error and stop.
-        if (!conversationId && documentFile) {
-            alert("You cannot attach a document as the first message in the conversation.");
-            return;
-        }
+        // Note: The following check has been removed so that a document can be attached
+        // even if it's the first message in the conversation.
+        // if (!conversationId && documentFile) {
+        //     alert("You cannot attach a document as the first message in the conversation.");
+        //     return;
+        // }
 
         // Only proceed if there's either a typed question, an image, or a document
         if (disabled || (!trimmedQuestion && !base64Image && !documentFile)) return;
@@ -122,8 +127,12 @@ export const QuestionInput = ({
                     method: 'POST',
                     body: formData,
                 });
-                if (!response.ok) throw new Error('Failed to process document');
                 const data = await response.json();
+                if (!response.ok) {
+                    alert(data.error); // Display the pop-up message
+                    removeUpload();    // Optionally clear the file selection
+                    return;            // Stop further processing
+                }
                 documentChunks = data.chunks;
             } catch (error) {
                 console.error('Error processing document:', error);
@@ -131,24 +140,22 @@ export const QuestionInput = ({
                 if (setIsProcessingDocument) setIsProcessingDocument(false);
             }
 
-            // Document preview message (silent)
+            // Build the final user message – either with the hidden document content or just the trimmed question.
+            let finalUserMessage: ChatMessage['content'];
+            if (documentChunks && documentChunks.length > 0) {
+                const hiddenDocumentContent = documentChunks.join("");
+                finalUserMessage = `[hidden-document-content]${hiddenDocumentContent}[/hidden-document-content]\n${trimmedQuestion}`;
+            } else {
+                finalUserMessage = trimmedQuestion;
+            }
+            // First, send the user's message
+            await onSend(finalUserMessage, conversationId, false);
+            // Then send the document preview as a separate, visible message.
             const previewMessage = `[Document Preview]: ${documentFile.name}`;
             await onSend(previewMessage, conversationId, true);
-
-            if (documentChunks && documentChunks.length > 0) {
-                // Send each chunk as a silent message
-                for (const chunk of documentChunks) {
-                    const silentMessage = `[Document Content]: ${chunk}`;
-                    await onSend(silentMessage, conversationId, true);
-                }
-                // Then the user’s typed question
-                await onSend(trimmedQuestion, conversationId, false);
-                removeUpload();
-                if (clearOnSend) setQuestion('');
-                return;
-            }
-            // If no chunks, just send the user’s text
-            questionContent = trimmedQuestion;
+            removeUpload();
+            if (clearOnSend) setQuestion('');
+            return;
         } else if (base64Image) {
             questionContent = [
                 { type: 'text', text: trimmedQuestion },
@@ -239,25 +246,22 @@ export const QuestionInput = ({
                         type="file"
                         id="documentInput"
                         onChange={handleDocumentSelect}
-                        accept=".pdf,.docx,.txt"
+                        accept=".pdf,.docx,.txt,.xls,.xlsx,.csv"
                         className={styles.fileInput}
                         ref={documentInputRef}
-                        disabled={!conversationId}
+                    // Removed the disabled prop so that document upload is allowed as the first message.
                     />
                     <label
                         htmlFor="documentInput"
                         className={styles.fileLabel}
                         aria-label="Upload Document"
-                        title={
-                            !conversationId
-                                ? "You cannot attach a document in the first message."
-                                : "Click here to upload a document"
-                        }
+                        // Updated title so that it always instructs the user to click to upload.
+                        title="Click here to upload a document"
                     >
-                        <FontIcon
+                        <img
+                            src={DocUpload}
                             className={styles.fileIcon}
-                            iconName="Upload"
-                            aria-label="Upload Document Icon"
+                            alt="Upload Document Icon"
                         />
                     </label>
                 </div>
@@ -287,7 +291,6 @@ export const QuestionInput = ({
                         className={styles.removeImageButton}
                         onClick={removeImage}
                         aria-label="Remove Uploaded Image"
-                        // Disable if processing
                         disabled={isProcessingDocument}
                     >
                         &times;
@@ -303,7 +306,6 @@ export const QuestionInput = ({
                         className={styles.removeImageButton}
                         onClick={() => setDocumentFile(null)}
                         aria-label="Remove Uploaded Document"
-                        // Disable if processing
                         disabled={isProcessingDocument}
                     >
                         &times;
