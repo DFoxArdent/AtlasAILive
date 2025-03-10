@@ -799,7 +799,7 @@ const Chat = () => {
                                 <img src={logo} className={styles.chatIcon} aria-hidden="true" />
                                 <h1 className={styles.chatEmptyStateTitle}>{ui?.chat_title}</h1>
                                 <h2 className={styles.chatEmptyStateSubtitle}>
-                                    This chatbot is configured with additional knowledge about Ardent Management.
+                                    This chatbot is configured with additional knowledge about Ardent.
                                     <br />
                                     Click the button in the top right to switch to the GPT-4o knowledge base.
                                 </h2>

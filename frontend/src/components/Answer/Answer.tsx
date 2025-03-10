@@ -68,22 +68,42 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
 
     const handleCopyClick = () => {
         console.log('handleCopyClick triggered');
-        if (answer.message_id == undefined) {
+        if (!answer.message_id) {
             console.error('Message ID is undefined, cannot copy content.');
             return;
         }
 
-        const contentToCopy = document.querySelector(`[data-message-id="${answer.message_id}"] .${styles.answerText}`)?.textContent;
+        const element = document.querySelector(
+            `[data-message-id="${answer.message_id}"] .${styles.answerText}`
+        );
 
-        if (contentToCopy) {
-            navigator.clipboard
-                .writeText(contentToCopy)
-                .then(() => {
-                    alert('Content copied to clipboard!');
-                })
-                .catch((err) => {
-                    console.error('Failed to copy text: ', err);
+        if (element) {
+            const htmlContent = element.innerHTML;
+            const textContent = element.textContent ?? '';
+
+            if (navigator.clipboard && navigator.clipboard.write) {
+                const blobHtml = new Blob([htmlContent], { type: 'text/html' });
+                const blobText = new Blob([textContent], { type: 'text/plain' });
+                const clipboardItem = new ClipboardItem({
+                    'text/html': blobHtml,
+                    'text/plain': blobText,
                 });
+                navigator.clipboard.write([clipboardItem])
+                    .then(() => {
+                        alert('Content copied to clipboard');
+                    })
+                    .catch((err) => {
+                        console.error('Failed to copy content: ', err);
+                    });
+            } else {
+                navigator.clipboard.writeText(textContent)
+                    .then(() => {
+                        alert('Content copied to clipboard');
+                    })
+                    .catch((err) => {
+                        console.error('Failed to copy text: ', err);
+                    });
+            }
         } else {
             console.error('Content to copy not found.');
         }
