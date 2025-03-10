@@ -48,7 +48,6 @@ export const QuestionInput = ({
         try {
             const resizedBase64 = await resizeImage(file, 800, 800);
             setBase64Image(resizedBase64);
-            // Clear any selected document when an image is uploaded.
             setDocumentFile(null);
         } catch (error) {
             console.error('Error during image upload:', error);
@@ -65,7 +64,6 @@ export const QuestionInput = ({
                     try {
                         const resizedBase64 = await resizeImage(file, 800, 800);
                         setBase64Image(resizedBase64);
-                        // Clear any selected document when an image is pasted.
                         setDocumentFile(null);
                     } catch (error) {
                         console.error('Error during image paste:', error);
@@ -78,20 +76,17 @@ export const QuestionInput = ({
 
     const removeImage = () => setBase64Image(null);
 
-    // ----- DOCUMENT UPLOAD (deferred until "Send") -----
     const handleDocumentSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) {
             console.warn('No document selected');
             return;
         }
-        // Clear image if a document is chosen.
         setBase64Image(null);
         setDocumentFile(file);
         console.log('Document file selected:', file);
     };
 
-    // ----- REMOVE UPLOADS -----
     const removeUpload = () => {
         setBase64Image(null);
         setDocumentFile(null);
@@ -99,19 +94,9 @@ export const QuestionInput = ({
         if (documentInputRef.current) documentInputRef.current.value = '';
     };
 
-    // ----- SEND QUESTION -----
     const sendQuestion = async () => {
-        // Trim the user's typed question
         const trimmedQuestion = question.trim();
 
-        // Note: The following check has been removed so that a document can be attached
-        // even if it's the first message in the conversation.
-        // if (!conversationId && documentFile) {
-        //     alert("You cannot attach a document as the first message in the conversation.");
-        //     return;
-        // }
-
-        // Only proceed if there's either a typed question, an image, or a document
         if (disabled || (!trimmedQuestion && !base64Image && !documentFile)) return;
 
         let questionContent: ChatMessage['content'];
@@ -129,9 +114,9 @@ export const QuestionInput = ({
                 });
                 const data = await response.json();
                 if (!response.ok) {
-                    alert(data.error); // Display the pop-up message
-                    removeUpload();    // Optionally clear the file selection
-                    return;            // Stop further processing
+                    alert(data.error); 
+                    removeUpload();    
+                    return;          
                 }
                 documentChunks = data.chunks;
             } catch (error) {
@@ -140,19 +125,18 @@ export const QuestionInput = ({
                 if (setIsProcessingDocument) setIsProcessingDocument(false);
             }
 
-            // Build the final user message – either with the hidden document content or just the trimmed question.
+            const previewLine = `[Document Preview]: ${documentFile.name}\n`;
             let finalUserMessage: ChatMessage['content'];
             if (documentChunks && documentChunks.length > 0) {
                 const hiddenDocumentContent = documentChunks.join("");
-                finalUserMessage = `[hidden-document-content]${hiddenDocumentContent}[/hidden-document-content]\n${trimmedQuestion}`;
+                finalUserMessage =
+                    previewLine +
+                    `[hidden-document-content]${hiddenDocumentContent}[/hidden-document-content]\n` +
+                    trimmedQuestion;
             } else {
-                finalUserMessage = trimmedQuestion;
+                finalUserMessage = previewLine + trimmedQuestion;
             }
-            // First, send the user's message
             await onSend(finalUserMessage, conversationId, false);
-            // Then send the document preview as a separate, visible message.
-            const previewMessage = `[Document Preview]: ${documentFile.name}`;
-            await onSend(previewMessage, conversationId, true);
             removeUpload();
             if (clearOnSend) setQuestion('');
             return;
@@ -174,7 +158,6 @@ export const QuestionInput = ({
         if (clearOnSend) setQuestion('');
     };
 
-    // ----- KEY HANDLERS -----
     const onEnterPress = (event: React.KeyboardEvent<Element>) => {
         if (
             event.key === 'Enter' &&
@@ -216,7 +199,6 @@ export const QuestionInput = ({
             />
 
             <div className={styles.fileAndSendContainer}>
-                {/* IMAGE Upload */}
                 <div className={styles.fileInputContainer}>
                     <input
                         type="file"
@@ -240,7 +222,6 @@ export const QuestionInput = ({
                     </label>
                 </div>
 
-                {/* DOCUMENT Upload */}
                 <div className={styles.fileInputContainer}>
                     <input
                         type="file"
@@ -249,13 +230,11 @@ export const QuestionInput = ({
                         accept=".pdf,.docx,.txt,.xls,.xlsx,.csv"
                         className={styles.fileInput}
                         ref={documentInputRef}
-                    // Removed the disabled prop so that document upload is allowed as the first message.
                     />
                     <label
                         htmlFor="documentInput"
                         className={styles.fileLabel}
                         aria-label="Upload Document"
-                        // Updated title so that it always instructs the user to click to upload.
                         title="Click here to upload a document"
                     >
                         <img
@@ -266,7 +245,6 @@ export const QuestionInput = ({
                     </label>
                 </div>
 
-                {/* SEND Button */}
                 <div
                     className={styles.questionInputSendButtonContainer}
                     role="button"
@@ -283,7 +261,6 @@ export const QuestionInput = ({
                 </div>
             </div>
 
-            {/* IMAGE PREVIEW */}
             {base64Image && (
                 <div className={styles.uploadPreviewContainer}>
                     <img className={styles.uploadedImage} src={base64Image} alt="Uploaded Preview" />
@@ -298,7 +275,6 @@ export const QuestionInput = ({
                 </div>
             )}
 
-            {/* DOCUMENT PREVIEW */}
             {documentFile && (
                 <div className={styles.uploadPreviewContainer}>
                     <p className={styles.uploadedDocument}>{documentFile.name}</p>

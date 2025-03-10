@@ -39,7 +39,7 @@ import { ChatHistoryPanel } from "../../components/ChatHistory/ChatHistoryPanel"
 import { AppStateContext } from "../../state/AppProvider";
 import { useBoolean } from "@fluentui/react-hooks";
 
-// Extend ChatMessage with an optional isPreview property for UI-only messages.
+
 interface ExtendedChatMessage extends ChatMessage {
     isPreview?: boolean;
 }
@@ -70,7 +70,6 @@ const Chat = () => {
     const [errorMsg, setErrorMsg] = useState<ErrorMessage | null>();
     const [logo, setLogo] = useState('');
     const [answerId, setAnswerId] = useState<string>('');
-    // New state to track document processing
     const [isProcessingDocument, setIsProcessingDocument] = useState(false);
 
     const errorDialogContentProps = {
@@ -192,7 +191,6 @@ const Chat = () => {
         const abortController = new AbortController();
         abortFuncs.current.unshift(abortController);
 
-        // Convert question to text if needed.
         const questionContent = typeof question === 'string'
             ? question
             : [{ type: "text", text: question[0].text }, { type: "image_url", image_url: { url: question[1].image_url.url } }];
@@ -231,7 +229,6 @@ const Chat = () => {
         appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: conversation });
         setMessages(conversation.messages);
 
-        // Filter out preview messages before sending to the AI.
         const request: ConversationRequest = {
             messages: [
                 ...conversation.messages.filter(m => m.role !== ERROR && !(m as ExtendedChatMessage).isPreview)
@@ -787,13 +784,15 @@ const Chat = () => {
                     <h1 className={styles.chatEmptyStateTitle}>Authentication Not Configured</h1>
                     <h2 className={styles.chatEmptyStateSubtitle}>
                         This app does not have authentication configured. Please add an identity provider by finding your app in the{' '}
-                        <a href="https://portal.azure.com/" target="_blank">
+                        <a href="https://portal.azure.com/" target="_blank" rel="noreferrer">
                             Azure Portal
                         </a>
                         and following{' '}
                         <a
                             href="https://learn.microsoft.com/en-us/azure/app-service/scenario-secure-app-authentication-app-service#3-configure-authentication-and-authorization"
-                            target="_blank">
+                            target="_blank"
+                            rel="noreferrer"
+                        >
                             these instructions
                         </a>
                         .
@@ -819,114 +818,196 @@ const Chat = () => {
                                 </h2>
                             </Stack>
                         ) : (
-                            <div className={styles.chatMessageStream} style={{ marginBottom: isLoading ? '40px' : '0px' }} role="log">
+                            <div
+                                className={styles.chatMessageStream}
+                                style={{ marginBottom: isLoading ? '40px' : '0px' }}
+                                role="log"
+                            >
                                 {messages
-                                    // Hide any user message that starts with "[Document Content]:" (for older messages)
                                     .filter((m) => {
-                                        if (m.role === 'user' && typeof m.content === 'string' && m.content.startsWith('[Document Content]:')) {
+                                        if (
+                                            m.role === 'user' &&
+                                            typeof m.content === 'string' &&
+                                            m.content.startsWith('[Document Content]:')
+                                        ) {
                                             return false;
                                         }
                                         return true;
                                     })
                                     .map((answer, index) => {
-                                        // 1) Show an icon + filename if the message starts with [Document Preview]:
-                                        if (
-                                            answer.role === 'user' &&
-                                            typeof answer.content === 'string' &&
-                                            answer.content.startsWith('[Document Preview]:')
-                                        ) {
-                                            const previewFilename = answer.content.replace('[Document Preview]:', '').trim();
-                                            return (
-                                                <div className={styles.chatMessageUser} tabIndex={0}>
-                                                    <div className={styles.chatMessageUserMessage}>
-                                                        <FontIcon iconName="Page" style={{ marginRight: 6, fontSize: 16 }} />
-                                                        <span>{previewFilename}</span>
+                                        if (answer.role === 'user') {
+                                            if (typeof answer.content === 'string') {
+                                                const sanitizedUserMessage = answer.content.replace(
+                                                    /\[hidden-document-content\][\s\S]*?\[\/hidden-document-content\]/g,
+                                                    ''
+                                                );
+
+                                                if (sanitizedUserMessage.startsWith('[Document Preview]:')) {
+                                                    const [previewLine, ...restLines] = sanitizedUserMessage.split('\n');
+                                                    const previewFilename = previewLine
+                                                        .replace('[Document Preview]:', '')
+                                                        .trim();
+
+                                                    return (
+                                                        <div className={styles.chatMessageUser} tabIndex={0} key={answer.id}>
+                                                            <div
+                                                                className={styles.chatMessageUserMessage}
+                                                                style={{
+                                                                    display: 'flex',
+                                                                    flexDirection: 'column',
+                                                                    alignItems: 'flex-start',
+                                                                    textAlign: 'left',
+                                                                }}
+                                                            >
+                                                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                                    <FontIcon iconName="Page" style={{ marginRight: 6, fontSize: 16 }} />
+                                                                    <span>{previewFilename}</span>
+                                                                </div>
+
+                                                                <hr
+                                                                    style={{
+                                                                        width: '100%',
+                                                                        border: '0',
+                                                                        borderTop: '1px solid #ccc',
+                                                                        margin: '2px 0', 
+                                                                    }}
+                                                                />
+
+                                                                {restLines.length > 0 && (
+                                                                    <div
+                                                                        style={{
+                                                                            whiteSpace: 'pre-wrap',
+                                                                            marginTop: '2px',
+                                                                        }}
+                                                                    >
+                                                                        {restLines.join('\n').trim()}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                } else {
+                                                    return (
+                                                        <div
+                                                            className={styles.chatMessageUser}
+                                                            tabIndex={0}
+                                                            key={answer.id}
+                                                        >
+                                                            <div className={styles.chatMessageUserMessage}>
+                                                                {sanitizedUserMessage}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+                                            }
+                                            else if (Array.isArray(answer.content)) {
+                                                const textPart = answer.content.find(
+                                                    (part): part is { type: 'text'; text: string } =>
+                                                        part.type === 'text'
+                                                )?.text;
+                                                const imagePart = answer.content.find(
+                                                    (part): part is { type: 'image_url'; image_url: { url: string } } =>
+                                                        part.type === 'image_url'
+                                                )?.image_url.url;
+
+                                                const sanitizedText = textPart
+                                                    ? textPart.replace(
+                                                        /\[hidden-document-content\][\s\S]*?\[\/hidden-document-content\]/g,
+                                                        ''
+                                                    )
+                                                    : '';
+
+                                                return (
+                                                    <div
+                                                        className={styles.chatMessageUser}
+                                                        tabIndex={0}
+                                                        key={answer.id}
+                                                    >
+                                                        <div className={styles.chatMessageUserMessage}>
+                                                            {sanitizedText}
+                                                            {imagePart && (
+                                                                <img
+                                                                    className={styles.uploadedImageChat}
+                                                                    src={imagePart}
+                                                                    alt="Uploaded"
+                                                                />
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            );
+                                                );
+                                            }
+                                            return null;
                                         }
 
-                                        if (answer.role === 'user') {
+                                        else if (answer.role === 'assistant') {
                                             return (
-                                                <div className={styles.chatMessageUser} tabIndex={0}>
-                                                    <div className={styles.chatMessageUserMessage}>
-                                                        {typeof answer.content === 'string' && answer.content ? (
-                                                            // Remove the hidden document chunk content before displaying
-                                                            answer.content.replace(/\[hidden-document-content\][\s\S]*?\[\/hidden-document-content\]\n?/, '')
-                                                        ) : Array.isArray(answer.content) ? (
-                                                            <>
-                                                                {answer.content.find(
-                                                                    (part): part is { type: 'text'; text: string } => part.type === 'text'
-                                                                )?.text}
-                                                                {answer.content.find(
-                                                                    (part): part is { type: 'image_url'; image_url: { url: string } } => part.type === 'image_url'
-                                                                )?.image_url.url && (
-                                                                        <img
-                                                                            className={styles.uploadedImageChat}
-                                                                            src={
-                                                                                answer.content.find(
-                                                                                    (part): part is { type: 'image_url'; image_url: { url: string } } =>
-                                                                                        part.type === 'image_url'
-                                                                                )?.image_url.url
-                                                                            }
-                                                                            alt="Uploaded"
-                                                                        />
-                                                                    )}
-                                                            </>
-                                                        ) : null}
-                                                    </div>
-                                                </div>
-                                            );
-                                        } else if (answer.role === 'assistant') {
-                                            return (
-                                                <div className={styles.chatMessageGpt}>
+                                                <div
+                                                    className={styles.chatMessageGpt}
+                                                    key={answer.id}
+                                                >
                                                     {typeof answer.content === 'string' && (
                                                         <Answer
                                                             answer={{
                                                                 answer: answer.content,
-                                                                citations: parseCitationFromMessage(messages[index - 1]),
-                                                                generated_chart: parsePlotFromMessage(messages[index - 1]),
+                                                                citations: parseCitationFromMessage(
+                                                                    messages[index - 1]
+                                                                ),
+                                                                generated_chart: parsePlotFromMessage(
+                                                                    messages[index - 1]
+                                                                ),
                                                                 message_id: answer.id,
                                                                 feedback: answer.feedback,
                                                                 exec_results: execResults,
                                                             }}
                                                             onCitationClicked={(c) => onShowCitation(c)}
-                                                            onExectResultClicked={() => onShowExecResult(answerId)}
+                                                            onExectResultClicked={() =>
+                                                                onShowExecResult(answerId)
+                                                            }
                                                         />
                                                     )}
                                                 </div>
                                             );
-                                        } else if (answer.role === 'error') {
+                                        }
+
+                                        else if (answer.role === 'error') {
                                             return (
-                                                <div className={styles.chatMessageError}>
-                                                    <Stack horizontal className={styles.chatMessageErrorContent}>
-                                                        <ErrorCircleRegular className={styles.errorIcon} style={{ color: 'rgba(182, 52, 67, 1)' }} />
+                                                <div
+                                                    className={styles.chatMessageError}
+                                                    key={answer.id}
+                                                >
+                                                    <Stack
+                                                        horizontal
+                                                        className={styles.chatMessageErrorContent}
+                                                    >
+                                                        <ErrorCircleRegular
+                                                            className={styles.errorIcon}
+                                                            style={{ color: 'rgba(182, 52, 67, 1)' }}
+                                                        />
                                                         <span>Error</span>
                                                     </Stack>
                                                     <span className={styles.chatMessageErrorContent}>
-                                                        {typeof answer.content === 'string' && answer.content}
+                                                        {typeof answer.content === 'string' &&
+                                                            answer.content}
                                                     </span>
                                                 </div>
                                             );
                                         }
+
                                         return null;
                                     })}
 
-
                                 {showLoadingMessage && (
-                                    <>
-                                        <div className={styles.chatMessageGpt}>
-                                            <Answer
-                                                answer={{
-                                                    answer: "Generating answer...",
-                                                    citations: [],
-                                                    generated_chart: null
-                                                }}
-                                                onCitationClicked={() => null}
-                                                onExectResultClicked={() => null}
-                                            />
-                                        </div>
-                                    </>
+                                    <div className={styles.chatMessageGpt}>
+                                        <Answer
+                                            answer={{
+                                                answer: 'Generating answer...',
+                                                citations: [],
+                                                generated_chart: null,
+                                            }}
+                                            onCitationClicked={() => null}
+                                            onExectResultClicked={() => null}
+                                        />
+                                    </div>
                                 )}
                                 <div ref={chatMessageStreamEnd} />
                             </div>
@@ -941,67 +1022,78 @@ const Chat = () => {
                                     aria-label="Stop generating"
                                     tabIndex={0}
                                     onClick={stopGenerating}
-                                    onKeyDown={e => (e.key === 'Enter' || e.key === ' ' ? stopGenerating() : null)}
+                                    onKeyDown={(e) =>
+                                        e.key === 'Enter' || e.key === ' ' ? stopGenerating() : null
+                                    }
                                 >
-                                    <SquareRegular className={styles.stopGeneratingIcon} aria-hidden="true" />
-                                    <span className={styles.stopGeneratingText} aria-hidden="true">
+                                    <SquareRegular
+                                        className={styles.stopGeneratingIcon}
+                                        aria-hidden="true"
+                                    />
+                                    <span
+                                        className={styles.stopGeneratingText}
+                                        aria-hidden="true"
+                                    >
                                         Stop generating
                                     </span>
                                 </Stack>
                             )}
                             <Stack>
-                                {appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured && (
-                                    <CommandBarButton
-                                        role="button"
-                                        styles={{
-                                            icon: {
-                                                color: '#FFFFFF'
-                                            },
-                                            iconDisabled: {
-                                                color: '#BDBDBD !important'
-                                            },
-                                            root: {
-                                                color: '#FFFFFF',
-                                                background:
-                                                    'radial-gradient(circle, #87F5D3 1%, #00DA96 60%)'
-                                            },
-                                            rootDisabled: {
-                                                background: '#F0F0F0'
-                                            }
-                                        }}
-                                        className={styles.newChatIcon}
-                                        iconProps={{ iconName: 'Add' }}
-                                        onClick={newChat}
-                                        disabled={disabledButton()}
-                                        aria-label="start a new chat button"
-                                    />
-                                )}
+                                {appStateContext?.state.isCosmosDBAvailable?.status !==
+                                    CosmosDBStatus.NotConfigured && (
+                                        <CommandBarButton
+                                            role="button"
+                                            styles={{
+                                                icon: {
+                                                    color: '#FFFFFF',
+                                                },
+                                                iconDisabled: {
+                                                    color: '#BDBDBD !important',
+                                                },
+                                                root: {
+                                                    color: '#FFFFFF',
+                                                    background:
+                                                        'radial-gradient(circle, #87F5D3 1%, #00DA96 60%)',
+                                                },
+                                                rootDisabled: {
+                                                    background: '#F0F0F0',
+                                                },
+                                            }}
+                                            className={styles.newChatIcon}
+                                            iconProps={{ iconName: 'Add' }}
+                                            onClick={newChat}
+                                            disabled={disabledButton()}
+                                            aria-label="start a new chat button"
+                                        />
+                                    )}
                                 <CommandBarButton
                                     role="button"
                                     styles={{
                                         icon: {
-                                            color: '#FFFFFF'
+                                            color: '#FFFFFF',
                                         },
                                         iconDisabled: {
-                                            color: '#BDBDBD !important'
+                                            color: '#BDBDBD !important',
                                         },
                                         root: {
                                             color: '#FFFFFF',
                                             background:
-                                                'radial-gradient(circle, #87F5D3 1%, #00DA96 60%)'
+                                                'radial-gradient(circle, #87F5D3 1%, #00DA96 60%)',
                                         },
                                         rootDisabled: {
-                                            background: '#F0F0F0'
-                                        }
+                                            background: '#F0F0F0',
+                                        },
                                     }}
                                     className={
-                                        appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured
+                                        appStateContext?.state.isCosmosDBAvailable?.status !==
+                                            CosmosDBStatus.NotConfigured
                                             ? styles.clearChatBroom
                                             : styles.clearChatBroomNoCosmos
                                     }
                                     iconProps={{ iconName: 'Broom' }}
                                     onClick={
-                                        appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured
+                                        appStateContext?.state.isCosmosDBAvailable?.status !==
+                                            CosmosDBStatus.NotConfigured
                                             ? clearChat
                                             : newChat
                                     }
@@ -1012,7 +1104,8 @@ const Chat = () => {
                                     hidden={hideErrorDialog}
                                     onDismiss={handleErrorDialogClose}
                                     dialogContentProps={errorDialogContentProps}
-                                    modalProps={modalProps}></Dialog>
+                                    modalProps={modalProps}
+                                />
                             </Stack>
                             <QuestionInput
                                 clearOnSend
@@ -1020,45 +1113,59 @@ const Chat = () => {
                                 disabled={isLoading}
                                 onSend={(question, id, silent = false) => {
                                     if (silent) {
-                                        // Check if this is a document preview message.
-                                        const isPreview = typeof question === 'string' && question.startsWith('[Document Preview]:');
+                                        // If this is a document preview message, mark it as isPreview
+                                        const isPreview =
+                                            typeof question === 'string' &&
+                                            question.startsWith('[Document Preview]:');
                                         const userMessage: ExtendedChatMessage = {
                                             id: uuid(),
                                             role: 'user',
                                             content: question,
                                             date: new Date().toISOString(),
-                                            ...(isPreview && { isPreview: true })
+                                            ...(isPreview && { isPreview: true }),
                                         };
                                         const currentConversation = appStateContext?.state.currentChat;
                                         if (currentConversation) {
                                             currentConversation.messages.push(userMessage);
-                                            appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: currentConversation });
+                                            appStateContext?.dispatch({
+                                                type: 'UPDATE_CURRENT_CHAT',
+                                                payload: currentConversation,
+                                            });
                                             setMessages([...currentConversation.messages]);
                                         }
                                     } else {
-                                        // For the visible (final) message, trigger the API request.
+                                        // For the visible (final) message, trigger the API request
                                         appStateContext?.state.isCosmosDBAvailable?.cosmosDB
                                             ? makeApiRequestWithCosmosDB(question, id)
                                             : makeApiRequestWithoutCosmosDB(question, id);
                                     }
                                 }}
                                 conversationId={
-                                    appStateContext?.state.currentChat?.id ? appStateContext?.state.currentChat?.id : undefined
+                                    appStateContext?.state.currentChat?.id
+                                        ? appStateContext?.state.currentChat?.id
+                                        : undefined
                                 }
                                 isProcessingDocument={isProcessingDocument}
                                 setIsProcessingDocument={setIsProcessingDocument}
                             />
                         </Stack>
                     </div>
+
                     {/* Citation Panel */}
                     {messages && messages.length > 0 && isCitationPanelOpen && activeCitation && (
-                        <Stack.Item className={styles.citationPanel} tabIndex={0} role="tabpanel" aria-label="Citations Panel">
+                        <Stack.Item
+                            className={styles.citationPanel}
+                            tabIndex={0}
+                            role="tabpanel"
+                            aria-label="Citations Panel"
+                        >
                             <Stack
                                 aria-label="Citations Panel Header Container"
                                 horizontal
                                 className={styles.citationPanelHeaderContainer}
                                 horizontalAlign="space-between"
-                                verticalAlign="center">
+                                verticalAlign="center"
+                            >
                                 <span aria-label="Citations" className={styles.citationPanelHeader}>
                                     Citations
                                 </span>
@@ -1076,28 +1183,39 @@ const Chat = () => {
                                         ? activeCitation.url
                                         : activeCitation.title ?? ''
                                 }
-                                onClick={() => onViewSource(activeCitation)}>
+                                onClick={() => onViewSource(activeCitation)}
+                            >
                                 {activeCitation.title}
                             </h5>
                             <div tabIndex={0}>
                                 <ReactMarkdown
                                     linkTarget="_blank"
                                     className={styles.citationPanelContent}
-                                    children={DOMPurify.sanitize(activeCitation.content, { ALLOWED_TAGS: XSSAllowTags })}
+                                    children={DOMPurify.sanitize(activeCitation.content, {
+                                        ALLOWED_TAGS: XSSAllowTags,
+                                    })}
                                     remarkPlugins={[remarkGfm]}
                                     rehypePlugins={[rehypeRaw]}
                                 />
                             </div>
                         </Stack.Item>
                     )}
+
+                    {/* Intents/Exec Results Panel */}
                     {messages && messages.length > 0 && isIntentsPanelOpen && (
-                        <Stack.Item className={styles.citationPanel} tabIndex={0} role="tabpanel" aria-label="Intents Panel">
+                        <Stack.Item
+                            className={styles.citationPanel}
+                            tabIndex={0}
+                            role="tabpanel"
+                            aria-label="Intents Panel"
+                        >
                             <Stack
                                 aria-label="Intents Panel Header Container"
                                 horizontal
                                 className={styles.citationPanelHeaderContainer}
                                 horizontalAlign="space-between"
-                                verticalAlign="center">
+                                verticalAlign="center"
+                            >
                                 <span aria-label="Intents" className={styles.citationPanelHeader}>
                                     Intents
                                 </span>
@@ -1108,53 +1226,75 @@ const Chat = () => {
                                 />
                             </Stack>
                             <Stack horizontalAlign="space-between">
-                                {appStateContext?.state?.answerExecResult[answerId]?.map((execResult: ExecResults, index) => (
-                                    <Stack className={styles.exectResultList} verticalAlign="space-between" key={index}>
-                                        <>
-                                            <span>Intent:</span> <p>{execResult.intent}</p>
-                                        </>
-                                        {execResult.search_query && (
+                                {appStateContext?.state?.answerExecResult[answerId]?.map(
+                                    (execResult: ExecResults, index) => (
+                                        <Stack
+                                            className={styles.exectResultList}
+                                            verticalAlign="space-between"
+                                            key={index}
+                                        >
                                             <>
-                                                <span>Search Query:</span>
-                                                <SyntaxHighlighter
-                                                    style={nord}
-                                                    wrapLines={true}
-                                                    lineProps={{ style: { wordBreak: 'break-all', whiteSpace: 'pre-wrap' } }}
-                                                    language="sql"
-                                                    PreTag="p">
-                                                    {execResult.search_query}
-                                                </SyntaxHighlighter>
+                                                <span>Intent:</span> <p>{execResult.intent}</p>
                                             </>
-                                        )}
-                                        {execResult.search_result && (
-                                            <>
-                                                <span>Search Result:</span> <p>{execResult.search_result}</p>
-                                            </>
-                                        )}
-                                        {execResult.code_generated && (
-                                            <>
-                                                <span>Code Generated:</span>
-                                                <SyntaxHighlighter
-                                                    style={nord}
-                                                    wrapLines={true}
-                                                    lineProps={{ style: { wordBreak: 'break-all', whiteSpace: 'pre-wrap' } }}
-                                                    language="python"
-                                                    PreTag="p">
-                                                    {execResult.code_generated}
-                                                </SyntaxHighlighter>
-                                            </>
-                                        )}
-                                    </Stack>
-                                ))}
+                                            {execResult.search_query && (
+                                                <>
+                                                    <span>Search Query:</span>
+                                                    <SyntaxHighlighter
+                                                        style={nord}
+                                                        wrapLines={true}
+                                                        lineProps={{
+                                                            style: {
+                                                                wordBreak: 'break-all',
+                                                                whiteSpace: 'pre-wrap',
+                                                            },
+                                                        }}
+                                                        language="sql"
+                                                        PreTag="p"
+                                                    >
+                                                        {execResult.search_query}
+                                                    </SyntaxHighlighter>
+                                                </>
+                                            )}
+                                            {execResult.search_result && (
+                                                <>
+                                                    <span>Search Result:</span>{' '}
+                                                    <p>{execResult.search_result}</p>
+                                                </>
+                                            )}
+                                            {execResult.code_generated && (
+                                                <>
+                                                    <span>Code Generated:</span>
+                                                    <SyntaxHighlighter
+                                                        style={nord}
+                                                        wrapLines={true}
+                                                        lineProps={{
+                                                            style: {
+                                                                wordBreak: 'break-all',
+                                                                whiteSpace: 'pre-wrap',
+                                                            },
+                                                        }}
+                                                        language="python"
+                                                        PreTag="p"
+                                                    >
+                                                        {execResult.code_generated}
+                                                    </SyntaxHighlighter>
+                                                </>
+                                            )}
+                                        </Stack>
+                                    )
+                                )}
                             </Stack>
                         </Stack.Item>
                     )}
+
                     {appStateContext?.state.isChatHistoryOpen &&
-                        appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured && <ChatHistoryPanel />}
+                        appStateContext?.state.isCosmosDBAvailable?.status !==
+                        CosmosDBStatus.NotConfigured && <ChatHistoryPanel />}
                 </Stack>
             )}
         </div>
     );
+
 };
 
 export default Chat;
