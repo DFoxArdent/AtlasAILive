@@ -841,13 +841,11 @@ const Chat = () => {
                                                     /\[hidden-document-content\][\s\S]*?\[\/hidden-document-content\]/g,
                                                     ''
                                                 );
-
                                                 if (sanitizedUserMessage.startsWith('[Document Preview]:')) {
                                                     const [previewLine, ...restLines] = sanitizedUserMessage.split('\n');
                                                     const previewFilename = previewLine
                                                         .replace('[Document Preview]:', '')
                                                         .trim();
-
                                                     return (
                                                         <div className={styles.chatMessageUser} tabIndex={0} key={answer.id}>
                                                             <div
@@ -863,16 +861,14 @@ const Chat = () => {
                                                                     <FontIcon iconName="Page" style={{ marginRight: 6, fontSize: 16 }} />
                                                                     <span>{previewFilename}</span>
                                                                 </div>
-
                                                                 <hr
                                                                     style={{
                                                                         width: '100%',
                                                                         border: '0',
                                                                         borderTop: '1px solid #ccc',
-                                                                        margin: '2px 0', 
+                                                                        margin: '2px 0',
                                                                     }}
                                                                 />
-
                                                                 {restLines.length > 0 && (
                                                                     <div
                                                                         style={{
@@ -899,8 +895,7 @@ const Chat = () => {
                                                         </div>
                                                     );
                                                 }
-                                            }
-                                            else if (Array.isArray(answer.content)) {
+                                            } else if (Array.isArray(answer.content)) {
                                                 const textPart = answer.content.find(
                                                     (part): part is { type: 'text'; text: string } =>
                                                         part.type === 'text'
@@ -909,37 +904,58 @@ const Chat = () => {
                                                     (part): part is { type: 'image_url'; image_url: { url: string } } =>
                                                         part.type === 'image_url'
                                                 )?.image_url.url;
-
                                                 const sanitizedText = textPart
                                                     ? textPart.replace(
                                                         /\[hidden-document-content\][\s\S]*?\[\/hidden-document-content\]/g,
                                                         ''
                                                     )
                                                     : '';
-
                                                 return (
                                                     <div
                                                         className={styles.chatMessageUser}
                                                         tabIndex={0}
                                                         key={answer.id}
                                                     >
-                                                        <div className={styles.chatMessageUserMessage}>
-                                                            {sanitizedText}
+                                                        <div
+                                                            className={styles.chatMessageUserMessage}
+                                                            style={{
+                                                                display: 'flex',
+                                                                flexDirection: 'column',
+                                                                alignItems: 'flex-start',
+                                                                textAlign: 'left'
+                                                            }}
+                                                        >
                                                             {imagePart && (
                                                                 <img
                                                                     className={styles.uploadedImageChat}
                                                                     src={imagePart}
                                                                     alt="Uploaded"
+                                                                    style={{
+                                                                        marginBottom: sanitizedText ? '2px' : '0'
+                                                                    }}
                                                                 />
+                                                            )}
+                                                            {imagePart && sanitizedText && (
+                                                                <hr
+                                                                    style={{
+                                                                        width: '100%',
+                                                                        border: '0',
+                                                                        borderTop: '1px solid #ccc',
+                                                                        margin: '2px 0'
+                                                                    }}
+                                                                />
+                                                            )}
+                                                            {sanitizedText && (
+                                                                <div style={{ whiteSpace: 'pre-wrap' }}>
+                                                                    {sanitizedText}
+                                                                </div>
                                                             )}
                                                         </div>
                                                     </div>
                                                 );
                                             }
                                             return null;
-                                        }
-
-                                        else if (answer.role === 'assistant') {
+                                        } else if (answer.role === 'assistant') {
                                             return (
                                                 <div
                                                     className={styles.chatMessageGpt}
@@ -967,9 +983,7 @@ const Chat = () => {
                                                     )}
                                                 </div>
                                             );
-                                        }
-
-                                        else if (answer.role === 'error') {
+                                        } else if (answer.role === 'error') {
                                             return (
                                                 <div
                                                     className={styles.chatMessageError}
@@ -992,10 +1006,8 @@ const Chat = () => {
                                                 </div>
                                             );
                                         }
-
                                         return null;
                                     })}
-
                                 {showLoadingMessage && (
                                     <div className={styles.chatMessageGpt}>
                                         <Answer
@@ -1012,7 +1024,6 @@ const Chat = () => {
                                 <div ref={chatMessageStreamEnd} />
                             </div>
                         )}
-
                         <Stack horizontal className={styles.chatInput}>
                             {isLoading && messages.length > 0 && (
                                 <Stack
@@ -1113,7 +1124,6 @@ const Chat = () => {
                                 disabled={isLoading}
                                 onSend={(question, id, silent = false) => {
                                     if (silent) {
-                                        // If this is a document preview message, mark it as isPreview
                                         const isPreview =
                                             typeof question === 'string' &&
                                             question.startsWith('[Document Preview]:');
@@ -1134,7 +1144,6 @@ const Chat = () => {
                                             setMessages([...currentConversation.messages]);
                                         }
                                     } else {
-                                        // For the visible (final) message, trigger the API request
                                         appStateContext?.state.isCosmosDBAvailable?.cosmosDB
                                             ? makeApiRequestWithCosmosDB(question, id)
                                             : makeApiRequestWithoutCosmosDB(question, id);
@@ -1150,8 +1159,6 @@ const Chat = () => {
                             />
                         </Stack>
                     </div>
-
-                    {/* Citation Panel */}
                     {messages && messages.length > 0 && isCitationPanelOpen && activeCitation && (
                         <Stack.Item
                             className={styles.citationPanel}
@@ -1200,8 +1207,6 @@ const Chat = () => {
                             </div>
                         </Stack.Item>
                     )}
-
-                    {/* Intents/Exec Results Panel */}
                     {messages && messages.length > 0 && isIntentsPanelOpen && (
                         <Stack.Item
                             className={styles.citationPanel}
@@ -1286,7 +1291,6 @@ const Chat = () => {
                             </Stack>
                         </Stack.Item>
                     )}
-
                     {appStateContext?.state.isChatHistoryOpen &&
                         appStateContext?.state.isCosmosDBAvailable?.status !==
                         CosmosDBStatus.NotConfigured && <ChatHistoryPanel />}
@@ -1294,6 +1298,8 @@ const Chat = () => {
             )}
         </div>
     );
+
+
 
 };
 
