@@ -40,6 +40,10 @@ import PyPDF2
 from io import BytesIO
 import os, uuid, docx2txt, logging
 import tempfile
+from azure.ai.formrecognizer import DocumentAnalysisClient
+from azure.core.credentials import AzureKeyCredential
+from dotenv import load_dotenv
+load_dotenv()
 
 bp = Blueprint("routes", __name__, static_folder="static", template_folder="static")
 
@@ -92,6 +96,22 @@ def chunk_text_by_tokens(text: str, max_tokens: int) -> list[str]:
 TOKEN_LIMIT = 115000
 ENCODER = tiktoken.get_encoding("cl100k_base")
 
+FORM_RECOGNIZER_ENDPOINT = os.environ.get("AZURE_FORM_RECOGNIZER_ENDPOINT")  
+FORM_RECOGNIZER_KEY = os.environ.get("AZURE_FORM_RECOGNIZER_KEY")
+
+def extract_text_from_images(pdf_bytes):
+    document_analysis_client = DocumentAnalysisClient(
+        FORM_RECOGNIZER_ENDPOINT, AzureKeyCredential(FORM_RECOGNIZER_KEY)
+    )
+
+    poller = document_analysis_client.begin_analyze_document(
+        "prebuilt-read", pdf_bytes
+    )
+    result = poller.result()
+
+    extracted_text = " ".join([line.content for page in result.pages for line in page.lines])
+    return extracted_text.strip()
+
 @bp.route("/upload", methods=["POST"])
 async def upload_document():
     files = await request.files
@@ -116,6 +136,9 @@ async def upload_document():
 
             pages_text = [page.extract_text() or "" for page in pdf_reader.pages]
             extracted_text = "\n".join(pages_text)
+
+            if not extracted_text.strip():
+                extracted_text = extract_text_from_images(file_bytes)
         
         except Exception as e:
             logging.exception("Failed to process PDF")
@@ -160,7 +183,6 @@ async def upload_document():
 
     chunks = chunk_text_by_tokens(extracted_text, TOKEN_LIMIT)
     return jsonify({"chunks": chunks})
-
 
 
 @bp.route("/")
