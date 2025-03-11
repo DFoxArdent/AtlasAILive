@@ -15,3 +15,5 @@ PyPDF2
 tiktoken
 pandas
 openpyxl
+pycryptodome
+pypdfium2

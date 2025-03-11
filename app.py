@@ -107,11 +107,20 @@ async def upload_document():
     if filename.endswith(".pdf"):
         try:
             pdf_reader = PyPDF2.PdfReader(BytesIO(file_bytes))
+
+            if pdf_reader.is_encrypted:
+                try:
+                    pdf_reader.decrypt("")
+                except:
+                    return jsonify({"error": "PDF is encrypted and requires a password"}), 400
+
             pages_text = [page.extract_text() or "" for page in pdf_reader.pages]
             extracted_text = "\n".join(pages_text)
+        
         except Exception as e:
             logging.exception("Failed to process PDF")
             return jsonify({"error": f"Failed to process PDF: {str(e)}"}), 400
+
     elif filename.endswith(".docx"):
         try:
             with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as temp_file:
@@ -122,28 +131,27 @@ async def upload_document():
         except Exception as e:
             logging.exception("Failed to process DOCX")
             return jsonify({"error": f"Failed to process DOCX: {str(e)}"}), 400
-    elif filename.endswith(".txt"):
+
+    elif filename.endswith(".txt") or filename.endswith(".csv"):
         try:
             extracted_text = file_bytes.decode("utf-8", errors="ignore")
         except Exception as e:
-            logging.exception("Failed to process TXT")
-            return jsonify({"error": f"Failed to process TXT: {str(e)}"}), 400
-    elif filename.endswith(".csv"):
-        try:
-            extracted_text = file_bytes.decode("utf-8", errors="ignore")
-        except Exception as e:
-            logging.exception("Failed to process CSV")
-            return jsonify({"error": f"Failed to process CSV: {str(e)}"}), 400
+            logging.exception("Failed to process text file")
+            return jsonify({"error": f"Failed to process file: {str(e)}"}), 400
+
     elif filename.endswith((".xlsx", ".xls")):
         try:
-            import pandas as pd
             df = pd.read_excel(BytesIO(file_bytes))
             extracted_text = df.to_csv(index=False)
         except Exception as e:
             logging.exception("Failed to process Excel")
             return jsonify({"error": f"Failed to process Excel: {str(e)}"}), 400
+
     else:
         return jsonify({"error": "Unsupported file type"}), 400
+
+    if not extracted_text.strip():
+        return jsonify({"error": "The uploaded document contains no text."}), 400
 
     if count_tokens(extracted_text) > 120000:
         return jsonify({
@@ -152,7 +160,6 @@ async def upload_document():
 
     chunks = chunk_text_by_tokens(extracted_text, TOKEN_LIMIT)
     return jsonify({"chunks": chunks})
-
 
 
 
