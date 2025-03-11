@@ -32,12 +32,42 @@ export const QuestionInput = ({
     const [question, setQuestion] = useState<string>('');
     const [base64Image, setBase64Image] = useState<string | null>(null);
     const [documentFile, setDocumentFile] = useState<File | null>(null);
+    const [isDragging, setIsDragging] = useState<boolean>(false);
 
     const appStateContext = useContext(AppStateContext);
     const OYD_ENABLED = appStateContext?.state.frontendSettings?.oyd_enabled || false;
 
     const imageInputRef = useRef<HTMLInputElement>(null);
     const documentInputRef = useRef<HTMLInputElement>(null);
+
+    const getDocumentIcon = (fileName: string) => {
+        const lowerName = fileName.toLowerCase();
+        if (lowerName.endsWith('.pdf')) {
+            return <FontIcon iconName="PDF" className={styles.documentIcon} />;
+        } else if (lowerName.endsWith('.doc') || lowerName.endsWith('.docx')) {
+            return <FontIcon iconName="WordLogo" className={styles.documentIcon} />;
+        } else if (lowerName.endsWith('.ppt') || lowerName.endsWith('.pptx')) {
+            return <FontIcon iconName="PowerPointLogo" className={styles.documentIcon} />;
+        } else if (
+            lowerName.endsWith('.xls') ||
+            lowerName.endsWith('.xlsx') ||
+            lowerName.endsWith('.xlsm') ||
+            lowerName.endsWith('.csv')
+        ) {
+            return <FontIcon iconName="ExcelLogo" className={styles.documentIcon} />;
+        } else if (lowerName.endsWith('.txt')) {
+            return <FontIcon iconName="Page" className={styles.documentIcon} />;
+        } else {
+            return <FontIcon iconName="Page" className={styles.documentIcon} />;
+        }
+    };
+
+    const removeImage = () => {
+        setBase64Image(null);
+        if (imageInputRef.current) {
+            imageInputRef.current.value = '';
+        }
+    };
 
     const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -74,8 +104,6 @@ export const QuestionInput = ({
         }
     };
 
-    const removeImage = () => setBase64Image(null);
-
     const handleDocumentSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) {
@@ -90,8 +118,12 @@ export const QuestionInput = ({
     const removeUpload = () => {
         setBase64Image(null);
         setDocumentFile(null);
-        if (imageInputRef.current) imageInputRef.current.value = '';
-        if (documentInputRef.current) documentInputRef.current.value = '';
+        if (imageInputRef.current) {
+            imageInputRef.current.value = '';
+        }
+        if (documentInputRef.current) {
+            documentInputRef.current.value = '';
+        }
     };
 
     const sendQuestion = async () => {
@@ -114,9 +146,9 @@ export const QuestionInput = ({
                 });
                 const data = await response.json();
                 if (!response.ok) {
-                    alert(data.error); 
-                    removeUpload();    
-                    return;          
+                    alert(data.error);
+                    removeUpload();
+                    return;
                 }
                 documentChunks = data.chunks;
             } catch (error) {
@@ -128,7 +160,7 @@ export const QuestionInput = ({
             const previewLine = `[Document Preview]: ${documentFile.name}\n`;
             let finalUserMessage: ChatMessage['content'];
             if (documentChunks && documentChunks.length > 0) {
-                const hiddenDocumentContent = documentChunks.join("");
+                const hiddenDocumentContent = documentChunks.join('');
                 finalUserMessage =
                     previewLine +
                     `[hidden-document-content]${hiddenDocumentContent}[/hidden-document-content]\n` +
@@ -175,16 +207,80 @@ export const QuestionInput = ({
         }
     };
 
+    const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
+        event.dataTransfer.dropEffect = 'copy';
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setIsDragging(false);
+    };
+
+    const handleDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setIsDragging(false);
+        const file = event.dataTransfer.files[0];
+        if (!file) return;
+
+        const lowerName = file.name.toLowerCase();
+        if (
+            lowerName.endsWith('.jpg') ||
+            lowerName.endsWith('.jpeg') ||
+            lowerName.endsWith('.png') ||
+            lowerName.endsWith('.gif') ||
+            lowerName.endsWith('.bmp') ||
+            lowerName.endsWith('.webp') ||
+            lowerName.endsWith('.svg')
+        ) {
+            try {
+                const resizedBase64 = await resizeImage(file, 800, 800);
+                setBase64Image(resizedBase64);
+                setDocumentFile(null);
+            } catch (error) {
+                console.error('Error during image drop:', error);
+            }
+        } else if (
+            lowerName.endsWith('.pdf') ||
+            lowerName.endsWith('.docx') ||
+            lowerName.endsWith('.doc') ||
+            lowerName.endsWith('.ppt') ||
+            lowerName.endsWith('.pptx') ||
+            lowerName.endsWith('.txt') ||
+            lowerName.endsWith('.xls') ||
+            lowerName.endsWith('.xlsx') ||
+            lowerName.endsWith('.xlsm') ||
+            lowerName.endsWith('.csv')
+        ) {
+            setBase64Image(null);
+            setDocumentFile(file);
+            console.log('Document file selected via drop:', file);
+        } else {
+            console.warn('Unsupported file type dropped.');
+        }
+    };
+
     const sendQuestionDisabled =
         disabled || (!question.trim() && !base64Image && !documentFile) || (isProcessingDocument ?? false);
 
     return (
-        <Stack horizontal className={styles.questionInputContainer}>
+        <Stack
+            className={styles.questionInputContainer}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+        >
             {isProcessingDocument && (
                 <div className={styles.spinnerOverlay}>
                     <Spinner label="Processing document..." />
                 </div>
             )}
+
+            {isDragging && <div className={styles.dropZoneOverlay} />}
 
             <TextField
                 className={styles.questionInputTextArea}
@@ -227,7 +323,7 @@ export const QuestionInput = ({
                         type="file"
                         id="documentInput"
                         onChange={handleDocumentSelect}
-                        accept=".pdf,.docx,.txt,.xls,.xlsx,.csv"
+                        accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.xls,.xlsx,.xlsm,.csv"
                         className={styles.fileInput}
                         ref={documentInputRef}
                     />
@@ -277,10 +373,30 @@ export const QuestionInput = ({
 
             {documentFile && (
                 <div className={styles.uploadPreviewContainer}>
-                    <p className={styles.uploadedDocument}>{documentFile.name}</p>
+                    <div
+                        className={styles.documentPreview}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            marginBottom: '4px',
+                        }}
+                    >
+                        <div style={{ position: 'relative', top: '2px', marginRight: '0px' }}>
+                            {getDocumentIcon(documentFile.name)}
+                        </div>
+                        <p className={styles.uploadedDocument} style={{ margin: 0 }}>
+                            {documentFile.name}
+                        </p>
+                    </div>
+
                     <button
                         className={styles.removeImageButton}
-                        onClick={() => setDocumentFile(null)}
+                        onClick={() => {
+                            setDocumentFile(null);
+                            if (documentInputRef.current) {
+                                documentInputRef.current.value = '';
+                            }
+                        }}
                         aria-label="Remove Uploaded Document"
                         disabled={isProcessingDocument}
                     >

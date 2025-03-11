@@ -44,6 +44,8 @@ from azure.ai.formrecognizer import DocumentAnalysisClient
 from azure.core.credentials import AzureKeyCredential
 from dotenv import load_dotenv
 load_dotenv()
+from pptx import Presentation
+import pandas as pd
 
 bp = Blueprint("routes", __name__, static_folder="static", template_folder="static")
 
@@ -162,10 +164,24 @@ async def upload_document():
             logging.exception("Failed to process text file")
             return jsonify({"error": f"Failed to process file: {str(e)}"}), 400
 
-    elif filename.endswith((".xlsx", ".xls")):
+    elif filename.endswith(".ppt") or filename.endswith(".pptx"):
         try:
-            df = pd.read_excel(BytesIO(file_bytes))
-            extracted_text = df.to_csv(index=False)
+            from pptx import Presentation
+            presentation = Presentation(BytesIO(file_bytes))
+            slides_text = []
+            for slide in presentation.slides:
+                for shape in slide.shapes:
+                    if hasattr(shape, "text"):
+                        slides_text.append(shape.text)
+            extracted_text = "\n".join(slides_text)
+        except Exception as e:
+            logging.exception("Failed to process PowerPoint")
+            return jsonify({"error": f"Failed to process PowerPoint: {str(e)}"}), 400
+
+    elif filename.endswith((".xlsx", ".xls", ".xlsm")):
+        try:
+            dfs = pd.read_excel(BytesIO(file_bytes), sheet_name=None)
+            extracted_text = "\n".join([df.to_csv(index=False) for df in dfs.values()])
         except Exception as e:
             logging.exception("Failed to process Excel")
             return jsonify({"error": f"Failed to process Excel: {str(e)}"}), 400

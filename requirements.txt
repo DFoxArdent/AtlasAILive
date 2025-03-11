@@ -18,3 +18,4 @@ openpyxl
 pycryptodome
 pypdfium2
 azure-ai-formrecognizer
+python-pptx
