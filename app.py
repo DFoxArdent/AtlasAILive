@@ -95,7 +95,7 @@ def chunk_text_by_tokens(text: str, max_tokens: int) -> list[str]:
     
     return chunks
 
-TOKEN_LIMIT = 115000
+TOKEN_LIMIT = 90000
 ENCODER = tiktoken.get_encoding("cl100k_base")
 
 FORM_RECOGNIZER_ENDPOINT = os.environ.get("AZURE_FORM_RECOGNIZER_ENDPOINT")  
@@ -243,7 +243,7 @@ frontend_settings = {
         "show_chat_history_button": app_settings.ui.show_chat_history_button,
     },
     "sanitize_answer": app_settings.base_settings.sanitize_answer,
-    "oyd_enabled": app_settings.base_settings.datasource_type,
+    "oyd_enabled": True,
 }
 
 MS_DEFENDER_ENABLED = os.environ.get("MS_DEFENDER_ENABLED", "true").lower() == "true"
