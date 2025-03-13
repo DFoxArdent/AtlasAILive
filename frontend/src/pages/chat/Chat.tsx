@@ -837,10 +837,9 @@ const Chat = () => {
                                     .map((answer, index) => {
                                         if (answer.role === 'user') {
                                             if (typeof answer.content === 'string') {
-                                                const sanitizedUserMessage = answer.content.replace(
-                                                    /\[hidden-document-content\][\s\S]*?\[\/hidden-document-content\]/g,
-                                                    ''
-                                                );
+                                                const sanitizedUserMessage = answer.content
+                                                    .replace(/\[hidden-document-content\][\s\S]*?\[\/hidden-document-content\]/g, '')
+                                                    .replace(/\[hidden-image-description\][\s\S]*?\[\/hidden-image-description\]/g, '');
                                                 if (sanitizedUserMessage.startsWith('[Document Preview]:')) {
                                                     const [previewLine, ...restLines] = sanitizedUserMessage.split('\n');
                                                     const previewFilename = previewLine

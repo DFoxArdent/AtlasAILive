@@ -200,6 +200,37 @@ async def upload_document():
     chunks = chunk_text_by_tokens(extracted_text, TOKEN_LIMIT)
     return jsonify({"chunks": chunks})
 
+@bp.route("/describe-image", methods=["POST"])
+async def describe_image():
+    files = await request.files
+    if "file" not in files:
+        return jsonify({"error": "No image uploaded"}), 400
+
+    file = files["file"]
+    image_bytes = file.read()
+
+    subscription_key = os.environ.get("COMPUTER_VISION_KEY")
+    endpoint = os.environ.get("COMPUTER_VISION_ENDPOINT") 
+    analyze_url = f"{endpoint}/vision/v3.2/describe"
+
+    headers = {
+        "Ocp-Apim-Subscription-Key": subscription_key,
+        "Content-Type": "application/octet-stream"
+    }
+
+    try:
+        response = httpx.post(analyze_url, headers=headers, content=image_bytes)
+        response.raise_for_status()
+        analysis = response.json()
+        if analysis.get("description") and analysis["description"].get("captions"):
+            caption = analysis["description"]["captions"][0]["text"]
+        else:
+            caption = "No description available."
+        return jsonify({"description": caption})
+    except Exception as e:
+        logging.exception("Failed to generate image description")
+        return jsonify({"error": "Failed to describe image"}), 500
+
 
 @bp.route("/")
 async def index():

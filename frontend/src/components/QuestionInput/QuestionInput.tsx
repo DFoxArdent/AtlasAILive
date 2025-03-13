@@ -20,6 +20,38 @@ interface Props {
     setIsProcessingDocument?: (value: boolean) => void;
 }
 
+/**
+ * Helper function to call the backend endpoint that returns an image description.
+ * The endpoint should accept the image (either as a File or a base64 string converted into a Blob)
+ * and return JSON { description: string }.
+ */
+const getImageDescription = async (base64Image: string): Promise<string> => {
+    // Convert the base64 string to a Blob. Remove any data URL prefix if present.
+    const base64Data = base64Image.includes(',')
+        ? base64Image.split(',')[1]
+        : base64Image;
+    const byteCharacters = atob(base64Data);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: 'image/jpeg' }); // adjust mime type if needed
+
+    const formData = new FormData();
+    formData.append('file', blob, 'upload.jpg');
+
+    const response = await fetch('/describe-image', {
+        method: 'POST',
+        body: formData,
+    });
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error(data.error || 'Error describing image');
+    }
+    return data.description;
+};
+
 export const QuestionInput = ({
     onSend,
     disabled,
@@ -133,6 +165,7 @@ export const QuestionInput = ({
 
         let questionContent: ChatMessage['content'];
 
+        // Handle document file as before
         if (documentFile) {
             if (setIsProcessingDocument) setIsProcessingDocument(true);
 
@@ -172,11 +205,27 @@ export const QuestionInput = ({
             removeUpload();
             if (clearOnSend) setQuestion('');
             return;
-        } else if (base64Image) {
-            questionContent = [
-                { type: 'text', text: trimmedQuestion },
-                { type: 'image_url', image_url: { url: base64Image } },
-            ];
+        }
+        // Handle base64 image upload by obtaining a description
+        else if (base64Image) {
+            try {
+                // Call backend to get the image description
+                const description = await getImageDescription(base64Image);
+                // Create a preview line (this will be shown in the UI)
+                const previewLine = `[Image Preview]: (Image uploaded)\n`;
+                // Hidden content holds the description for AI context (but not displayed)
+                const finalUserMessage =
+                    previewLine +
+                    `[hidden-image-description]${description}[/hidden-image-description]\n` +
+                    trimmedQuestion;
+                await onSend(finalUserMessage, conversationId, false);
+            } catch (error) {
+                console.error('Error describing image, sending text only', error);
+                await onSend(trimmedQuestion, conversationId);
+            }
+            removeUpload();
+            if (clearOnSend) setQuestion('');
+            return;
         } else {
             questionContent = trimmedQuestion;
         }
