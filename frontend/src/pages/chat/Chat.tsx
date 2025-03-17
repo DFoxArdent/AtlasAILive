@@ -39,7 +39,6 @@ import { ChatHistoryPanel } from "../../components/ChatHistory/ChatHistoryPanel"
 import { AppStateContext } from "../../state/AppProvider";
 import { useBoolean } from "@fluentui/react-hooks";
 
-
 interface ExtendedChatMessage extends ChatMessage {
     isPreview?: boolean;
 }
@@ -135,6 +134,7 @@ const Chat = () => {
         }
     };
 
+    // Local variables for accumulating messages during streaming
     let assistantMessage = {} as ChatMessage;
     let toolMessage = {} as ChatMessage;
     let assistantContent = '';
@@ -147,7 +147,8 @@ const Chat = () => {
         appStateContext?.dispatch({ type: 'SET_ANSWER_EXEC_RESULT', payload: { answerId: answerId, exec_result: exec_results } });
     };
 
-    const processResultMessage = (resultMessage: ChatMessage, userMessage: ChatMessage, conversationId?: string) => {
+    // UPDATED: Remove incremental state updates. Simply accumulate the message content.
+    const processResultMessage = (resultMessage: ChatMessage, userMessage: ChatMessage) => {
         if (typeof resultMessage.content === "string" && resultMessage.content.includes('all_exec_results')) {
             const parsedExecResults = JSON.parse(resultMessage.content) as AzureSqlServerExecResults;
             setExecResults(parsedExecResults.all_exec_results);
@@ -159,8 +160,7 @@ const Chat = () => {
         if (resultMessage.role === ASSISTANT) {
             setAnswerId(resultMessage.id);
             assistantContent += resultMessage.content;
-            assistantMessage = { ...assistantMessage, ...resultMessage };
-            assistantMessage.content = assistantContent;
+            assistantMessage = { ...assistantMessage, ...resultMessage, content: assistantContent };
 
             if (resultMessage.context) {
                 toolMessage = {
@@ -172,17 +172,10 @@ const Chat = () => {
             }
         }
 
-        if (resultMessage.role === TOOL) toolMessage = resultMessage;
-
-        if (!conversationId) {
-            isEmpty(toolMessage)
-                ? setMessages([...messages, userMessage, assistantMessage])
-                : setMessages([...messages, userMessage, toolMessage, assistantMessage]);
-        } else {
-            isEmpty(toolMessage)
-                ? setMessages([...messages, assistantMessage])
-                : setMessages([...messages, toolMessage, assistantMessage]);
+        if (resultMessage.role === TOOL) {
+            toolMessage = resultMessage;
         }
+        // No state update here—state will be updated once after streaming ends.
     };
 
     const makeApiRequestWithoutCosmosDB = async (question: ChatMessage["content"], conversationId?: string) => {
@@ -262,8 +255,9 @@ const Chat = () => {
                                     if (result.choices[0].messages?.some(m => m.role === ASSISTANT)) {
                                         setShowLoadingMessage(false);
                                     }
+                                    // Instead of updating state incrementally, simply accumulate
                                     result.choices[0].messages.forEach(resultObj => {
-                                        processResultMessage(resultObj, userMessage, conversationId);
+                                        processResultMessage(resultObj, userMessage);
                                     });
                                 } else if (result.error) {
                                     throw Error(result.error);
@@ -280,9 +274,16 @@ const Chat = () => {
                         }
                     });
                 }
-                conversation.messages.push(toolMessage, assistantMessage);
-                appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: conversation });
-                setMessages([...messages, toolMessage, assistantMessage]);
+                // Once streaming is complete, update the conversation state once:
+                if (conversation) {
+                    if (isEmpty(toolMessage)) {
+                        conversation.messages.push(assistantMessage);
+                    } else {
+                        conversation.messages.push(toolMessage, assistantMessage);
+                    }
+                    appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: conversation });
+                    setMessages([...conversation.messages]);
+                }
             }
         } catch (e) {
             if (!abortController.signal.aborted) {
@@ -302,9 +303,9 @@ const Chat = () => {
                     content: errorMessage,
                     date: new Date().toISOString()
                 };
-                conversation.messages.push(errorChatMsg);
+                conversation!.messages.push(errorChatMsg);
                 appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: conversation });
-                setMessages([...messages, errorChatMsg]);
+                setMessages([...conversation!.messages]);
             } else {
                 setMessages([...messages, userMessage]);
             }
@@ -429,7 +430,7 @@ const Chat = () => {
                                         setShowLoadingMessage(false);
                                     }
                                     result.choices[0].messages.forEach(resultObj => {
-                                        processResultMessage(resultObj, userMessage, conversationId);
+                                        processResultMessage(resultObj, userMessage);
                                     });
                                 }
                                 runningText = '';
@@ -457,9 +458,11 @@ const Chat = () => {
                         abortFuncs.current = abortFuncs.current.filter(a => a !== abortController);
                         return;
                     }
-                    isEmpty(toolMessage)
-                        ? resultConversation.messages.push(assistantMessage)
-                        : resultConversation.messages.push(toolMessage, assistantMessage);
+                    if (isEmpty(toolMessage)) {
+                        resultConversation.messages.push(assistantMessage);
+                    } else {
+                        resultConversation.messages.push(toolMessage, assistantMessage);
+                    }
                 } else {
                     resultConversation = {
                         id: result.history_metadata.conversation_id,
@@ -467,9 +470,11 @@ const Chat = () => {
                         messages: [userMessage],
                         date: result.history_metadata.date
                     };
-                    isEmpty(toolMessage)
-                        ? resultConversation.messages.push(assistantMessage)
-                        : resultConversation.messages.push(toolMessage, assistantMessage);
+                    if (isEmpty(toolMessage)) {
+                        resultConversation.messages.push(assistantMessage);
+                    } else {
+                        resultConversation.messages.push(toolMessage, assistantMessage);
+                    }
                 }
                 if (!resultConversation) {
                     setIsLoading(false);
@@ -478,9 +483,7 @@ const Chat = () => {
                     return;
                 }
                 appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: resultConversation });
-                isEmpty(toolMessage)
-                    ? setMessages([...messages, assistantMessage])
-                    : setMessages([...messages, toolMessage, assistantMessage]);
+                setMessages([...resultConversation.messages]);
             }
         } catch (e) {
             if (!abortController.signal.aborted) {
@@ -513,12 +516,6 @@ const Chat = () => {
                 } else {
                     if (!result.history_metadata) {
                         console.error('Error retrieving data.', result);
-                        let errorChatMsg: ChatMessage = {
-                            id: uuid(),
-                            role: ERROR,
-                            content: errorMessage,
-                            date: new Date().toISOString()
-                        };
                         setMessages([...messages, userMessage, errorChatMsg]);
                         setIsLoading(false);
                         setShowLoadingMessage(false);
@@ -540,7 +537,7 @@ const Chat = () => {
                     return;
                 }
                 appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: resultConversation });
-                setMessages([...messages, errorChatMsg]);
+                setMessages([...resultConversation.messages]);
             } else {
                 setMessages([...messages, userMessage]);
             }
@@ -703,7 +700,6 @@ const Chat = () => {
                             return errRes;
                         });
                 }
-            } else {
             }
             appStateContext?.dispatch({ type: 'UPDATE_CHAT_HISTORY', payload: appStateContext.state.currentChat });
             setMessages(appStateContext.state.currentChat.messages);
@@ -837,9 +833,10 @@ const Chat = () => {
                                     .map((answer, index) => {
                                         if (answer.role === 'user') {
                                             if (typeof answer.content === 'string') {
-                                                const sanitizedUserMessage = answer.content
-                                                    .replace(/\[hidden-document-content\][\s\S]*?\[\/hidden-document-content\]/g, '')
-                                                    .replace(/\[hidden-image-description\][\s\S]*?\[\/hidden-image-description\]/g, '');
+                                                const sanitizedUserMessage = answer.content.replace(
+                                                    /\[hidden-document-content\][\s\S]*?\[\/hidden-document-content\]/g,
+                                                    ''
+                                                );
                                                 if (sanitizedUserMessage.startsWith('[Document Preview]:')) {
                                                     const [previewLine, ...restLines] = sanitizedUserMessage.split('\n');
                                                     const previewFilename = previewLine
@@ -1297,9 +1294,6 @@ const Chat = () => {
             )}
         </div>
     );
-
-
-
 };
 
 export default Chat;
