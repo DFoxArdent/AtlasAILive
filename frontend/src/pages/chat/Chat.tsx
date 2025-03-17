@@ -134,7 +134,6 @@ const Chat = () => {
         }
     };
 
-    // Local variables for accumulating messages during streaming
     let assistantMessage = {} as ChatMessage;
     let toolMessage = {} as ChatMessage;
     let assistantContent = '';
@@ -147,7 +146,6 @@ const Chat = () => {
         appStateContext?.dispatch({ type: 'SET_ANSWER_EXEC_RESULT', payload: { answerId: answerId, exec_result: exec_results } });
     };
 
-    // UPDATED: Remove incremental state updates. Simply accumulate the message content.
     const processResultMessage = (resultMessage: ChatMessage, userMessage: ChatMessage) => {
         if (typeof resultMessage.content === "string" && resultMessage.content.includes('all_exec_results')) {
             const parsedExecResults = JSON.parse(resultMessage.content) as AzureSqlServerExecResults;
@@ -175,7 +173,6 @@ const Chat = () => {
         if (resultMessage.role === TOOL) {
             toolMessage = resultMessage;
         }
-        // No state update here—state will be updated once after streaming ends.
     };
 
     const makeApiRequestWithoutCosmosDB = async (question: ChatMessage["content"], conversationId?: string) => {
@@ -255,7 +252,6 @@ const Chat = () => {
                                     if (result.choices[0].messages?.some(m => m.role === ASSISTANT)) {
                                         setShowLoadingMessage(false);
                                     }
-                                    // Instead of updating state incrementally, simply accumulate
                                     result.choices[0].messages.forEach(resultObj => {
                                         processResultMessage(resultObj, userMessage);
                                     });
@@ -274,7 +270,6 @@ const Chat = () => {
                         }
                     });
                 }
-                // Once streaming is complete, update the conversation state once:
                 if (conversation) {
                     if (isEmpty(toolMessage)) {
                         conversation.messages.push(assistantMessage);
@@ -833,10 +828,9 @@ const Chat = () => {
                                     .map((answer, index) => {
                                         if (answer.role === 'user') {
                                             if (typeof answer.content === 'string') {
-                                                const sanitizedUserMessage = answer.content.replace(
-                                                    /\[hidden-document-content\][\s\S]*?\[\/hidden-document-content\]/g,
-                                                    ''
-                                                );
+                                                const sanitizedUserMessage = answer.content
+                                                    .replace(/\[hidden-document-content\][\s\S]*?\[\/hidden-document-content\]/g, '')
+                                                    .replace(/\[hidden-image-description\][\s\S]*?\[\/hidden-image-description\]/g, '');
                                                 if (sanitizedUserMessage.startsWith('[Document Preview]:')) {
                                                     const [previewLine, ...restLines] = sanitizedUserMessage.split('\n');
                                                     const previewFilename = previewLine
@@ -878,6 +872,47 @@ const Chat = () => {
                                                             </div>
                                                         </div>
                                                     );
+                                                } else if (sanitizedUserMessage.startsWith('[Image Preview]:')) {
+                                                    const [previewLine, ...restLines] = sanitizedUserMessage.split('\n');
+                                                    const previewFilename = previewLine
+                                                        .replace('[Image Preview]:', '')
+                                                        .trim();
+                                                    return (
+                                                        <div className={styles.chatMessageUser} tabIndex={0} key={answer.id}>
+                                                            <div
+                                                                className={styles.chatMessageUserMessage}
+                                                                style={{
+                                                                    display: 'flex',
+                                                                    flexDirection: 'column',
+                                                                    alignItems: 'flex-start',
+                                                                    textAlign: 'left',
+                                                                }}
+                                                            >
+                                                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                                    <FontIcon iconName="PhotoCollection" style={{ marginRight: 6, fontSize: 16 }} />
+                                                                    <span>{previewFilename}</span>
+                                                                </div>
+                                                                <hr
+                                                                    style={{
+                                                                        width: '100%',
+                                                                        border: '0',
+                                                                        borderTop: '1px solid #ccc',
+                                                                        margin: '2px 0',
+                                                                    }}
+                                                                />
+                                                                {restLines.length > 0 && (
+                                                                    <div
+                                                                        style={{
+                                                                            whiteSpace: 'pre-wrap',
+                                                                            marginTop: '2px',
+                                                                        }}
+                                                                    >
+                                                                        {restLines.join('\n').trim()}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
                                                 } else {
                                                     return (
                                                         <div
@@ -893,8 +928,7 @@ const Chat = () => {
                                                 }
                                             } else if (Array.isArray(answer.content)) {
                                                 const textPart = answer.content.find(
-                                                    (part): part is { type: 'text'; text: string } =>
-                                                        part.type === 'text'
+                                                    (part): part is { type: 'text'; text: string } => part.type === 'text'
                                                 )?.text;
                                                 const imagePart = answer.content.find(
                                                     (part): part is { type: 'image_url'; image_url: { url: string } } =>
@@ -961,20 +995,14 @@ const Chat = () => {
                                                         <Answer
                                                             answer={{
                                                                 answer: answer.content,
-                                                                citations: parseCitationFromMessage(
-                                                                    messages[index - 1]
-                                                                ),
-                                                                generated_chart: parsePlotFromMessage(
-                                                                    messages[index - 1]
-                                                                ),
+                                                                citations: parseCitationFromMessage(messages[index - 1]),
+                                                                generated_chart: parsePlotFromMessage(messages[index - 1]),
                                                                 message_id: answer.id,
                                                                 feedback: answer.feedback,
                                                                 exec_results: execResults,
                                                             }}
                                                             onCitationClicked={(c) => onShowCitation(c)}
-                                                            onExectResultClicked={() =>
-                                                                onShowExecResult(answerId)
-                                                            }
+                                                            onExectResultClicked={() => onShowExecResult(answerId)}
                                                         />
                                                     )}
                                                 </div>
@@ -996,8 +1024,7 @@ const Chat = () => {
                                                         <span>Error</span>
                                                     </Stack>
                                                     <span className={styles.chatMessageErrorContent}>
-                                                        {typeof answer.content === 'string' &&
-                                                            answer.content}
+                                                        {typeof answer.content === 'string' && answer.content}
                                                     </span>
                                                 </div>
                                             );
@@ -1046,33 +1073,32 @@ const Chat = () => {
                                 </Stack>
                             )}
                             <Stack>
-                                {appStateContext?.state.isCosmosDBAvailable?.status !==
-                                    CosmosDBStatus.NotConfigured && (
-                                        <CommandBarButton
-                                            role="button"
-                                            styles={{
-                                                icon: {
-                                                    color: '#FFFFFF',
-                                                },
-                                                iconDisabled: {
-                                                    color: '#BDBDBD !important',
-                                                },
-                                                root: {
-                                                    color: '#FFFFFF',
-                                                    background:
-                                                        'radial-gradient(circle, #87F5D3 1%, #00DA96 60%)',
-                                                },
-                                                rootDisabled: {
-                                                    background: '#F0F0F0',
-                                                },
-                                            }}
-                                            className={styles.newChatIcon}
-                                            iconProps={{ iconName: 'Add' }}
-                                            onClick={newChat}
-                                            disabled={disabledButton()}
-                                            aria-label="start a new chat button"
-                                        />
-                                    )}
+                                {appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured && (
+                                    <CommandBarButton
+                                        role="button"
+                                        styles={{
+                                            icon: {
+                                                color: '#FFFFFF',
+                                            },
+                                            iconDisabled: {
+                                                color: '#BDBDBD !important',
+                                            },
+                                            root: {
+                                                color: '#FFFFFF',
+                                                background:
+                                                    'radial-gradient(circle, #87F5D3 1%, #00DA96 60%)',
+                                            },
+                                            rootDisabled: {
+                                                background: '#F0F0F0',
+                                            },
+                                        }}
+                                        className={styles.newChatIcon}
+                                        iconProps={{ iconName: 'Add' }}
+                                        onClick={newChat}
+                                        disabled={disabledButton()}
+                                        aria-label="start a new chat button"
+                                    />
+                                )}
                                 <CommandBarButton
                                     role="button"
                                     styles={{
@@ -1092,15 +1118,13 @@ const Chat = () => {
                                         },
                                     }}
                                     className={
-                                        appStateContext?.state.isCosmosDBAvailable?.status !==
-                                            CosmosDBStatus.NotConfigured
+                                        appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured
                                             ? styles.clearChatBroom
                                             : styles.clearChatBroomNoCosmos
                                     }
                                     iconProps={{ iconName: 'Broom' }}
                                     onClick={
-                                        appStateContext?.state.isCosmosDBAvailable?.status !==
-                                            CosmosDBStatus.NotConfigured
+                                        appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured
                                             ? clearChat
                                             : newChat
                                     }
@@ -1258,8 +1282,7 @@ const Chat = () => {
                                             )}
                                             {execResult.search_result && (
                                                 <>
-                                                    <span>Search Result:</span>{' '}
-                                                    <p>{execResult.search_result}</p>
+                                                    <span>Search Result:</span> <p>{execResult.search_result}</p>
                                                 </>
                                             )}
                                             {execResult.code_generated && (
@@ -1288,12 +1311,12 @@ const Chat = () => {
                         </Stack.Item>
                     )}
                     {appStateContext?.state.isChatHistoryOpen &&
-                        appStateContext?.state.isCosmosDBAvailable?.status !==
-                        CosmosDBStatus.NotConfigured && <ChatHistoryPanel />}
+                        appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured && <ChatHistoryPanel />}
                 </Stack>
             )}
         </div>
     );
+
 };
 
 export default Chat;

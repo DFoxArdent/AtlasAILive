@@ -20,13 +20,7 @@ interface Props {
     setIsProcessingDocument?: (value: boolean) => void;
 }
 
-/**
- * Helper function to call the backend endpoint that returns an image description.
- * The endpoint should accept the image (either as a File or a base64 string converted into a Blob)
- * and return JSON { description: string }.
- */
 const getImageDescription = async (base64Image: string): Promise<string> => {
-    // Convert the base64 string to a Blob. Remove any data URL prefix if present.
     const base64Data = base64Image.includes(',')
         ? base64Image.split(',')[1]
         : base64Image;
@@ -36,7 +30,7 @@ const getImageDescription = async (base64Image: string): Promise<string> => {
         byteNumbers[i] = byteCharacters.charCodeAt(i);
     }
     const byteArray = new Uint8Array(byteNumbers);
-    const blob = new Blob([byteArray], { type: 'image/jpeg' }); // adjust mime type if needed
+    const blob = new Blob([byteArray], { type: 'image/jpeg' });
 
     const formData = new FormData();
     formData.append('file', blob, 'upload.jpg');
@@ -64,6 +58,7 @@ export const QuestionInput = ({
     const [question, setQuestion] = useState<string>('');
     const [base64Image, setBase64Image] = useState<string | null>(null);
     const [documentFile, setDocumentFile] = useState<File | null>(null);
+    const [imageFile, setImageFile] = useState<File | null>(null);
     const [isDragging, setIsDragging] = useState<boolean>(false);
 
     const appStateContext = useContext(AppStateContext);
@@ -96,6 +91,7 @@ export const QuestionInput = ({
 
     const removeImage = () => {
         setBase64Image(null);
+        setImageFile(null);
         if (imageInputRef.current) {
             imageInputRef.current.value = '';
         }
@@ -111,6 +107,7 @@ export const QuestionInput = ({
             const resizedBase64 = await resizeImage(file, 800, 800);
             setBase64Image(resizedBase64);
             setDocumentFile(null);
+            setImageFile(file);
         } catch (error) {
             console.error('Error during image upload:', error);
         }
@@ -127,6 +124,7 @@ export const QuestionInput = ({
                         const resizedBase64 = await resizeImage(file, 800, 800);
                         setBase64Image(resizedBase64);
                         setDocumentFile(null);
+                        setImageFile(file);
                     } catch (error) {
                         console.error('Error during image paste:', error);
                     }
@@ -150,6 +148,7 @@ export const QuestionInput = ({
     const removeUpload = () => {
         setBase64Image(null);
         setDocumentFile(null);
+        setImageFile(null);
         if (imageInputRef.current) {
             imageInputRef.current.value = '';
         }
@@ -165,7 +164,6 @@ export const QuestionInput = ({
 
         let questionContent: ChatMessage['content'];
 
-        // Handle document file as before
         if (documentFile) {
             if (setIsProcessingDocument) setIsProcessingDocument(true);
 
@@ -173,7 +171,7 @@ export const QuestionInput = ({
             try {
                 const formData = new FormData();
                 formData.append('file', documentFile);
-                const response = await fetch(`/upload`, {
+                const response = await fetch('/upload', {
                     method: 'POST',
                     body: formData,
                 });
@@ -206,14 +204,10 @@ export const QuestionInput = ({
             if (clearOnSend) setQuestion('');
             return;
         }
-        // Handle base64 image upload by obtaining a description
         else if (base64Image) {
             try {
-                // Call backend to get the image description
                 const description = await getImageDescription(base64Image);
-                // Create a preview line (this will be shown in the UI)
-                const previewLine = `[Image Preview]: (Image uploaded)\n`;
-                // Hidden content holds the description for AI context (but not displayed)
+                const previewLine = `[Image Preview]: ${imageFile ? imageFile.name : 'Image uploaded'}\n`;
                 const finalUserMessage =
                     previewLine +
                     `[hidden-image-description]${description}[/hidden-image-description]\n` +
@@ -290,6 +284,7 @@ export const QuestionInput = ({
                 const resizedBase64 = await resizeImage(file, 800, 800);
                 setBase64Image(resizedBase64);
                 setDocumentFile(null);
+                setImageFile(file);
             } catch (error) {
                 console.error('Error during image drop:', error);
             }

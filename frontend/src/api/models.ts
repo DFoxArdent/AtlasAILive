@@ -37,6 +37,7 @@ export type AzureSqlServerExecResults = {
   all_exec_results: AzureSqlServerExecResult[]
 }
 
+
 export type ChatMessage = {
   id: string
   role: string
