@@ -20,7 +20,9 @@ interface Props {
     setIsProcessingDocument?: (value: boolean) => void;
 }
 
-const getImageDescription = async (base64Image: string): Promise<string> => {
+const getImageDescription = async (
+    base64Image: string
+): Promise<{ description: string; extractedText: string }> => {
     const base64Data = base64Image.includes(',')
         ? base64Image.split(',')[1]
         : base64Image;
@@ -43,8 +45,12 @@ const getImageDescription = async (base64Image: string): Promise<string> => {
     if (!response.ok) {
         throw new Error(data.error || 'Error describing image');
     }
-    return data.description;
+    return {
+        description: data.description,
+        extractedText: data.extracted_text,
+    };
 };
+
 
 export const QuestionInput = ({
     onSend,

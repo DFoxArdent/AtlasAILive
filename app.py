@@ -210,8 +210,9 @@ async def describe_image():
     image_bytes = file.read()
 
     subscription_key = os.environ.get("COMPUTER_VISION_KEY")
-    endpoint = os.environ.get("COMPUTER_VISION_ENDPOINT") 
-    analyze_url = f"{endpoint}/vision/v3.2/describe"
+    endpoint = os.environ.get("COMPUTER_VISION_ENDPOINT")
+    describe_url = f"{endpoint}/vision/v3.2/describe"
+    read_url = f"{endpoint}/vision/v3.2/read/analyze"
 
     headers = {
         "Ocp-Apim-Subscription-Key": subscription_key,
@@ -219,17 +220,44 @@ async def describe_image():
     }
 
     try:
-        response = httpx.post(analyze_url, headers=headers, content=image_bytes)
-        response.raise_for_status()
-        analysis = response.json()
-        if analysis.get("description") and analysis["description"].get("captions"):
-            caption = analysis["description"]["captions"][0]["text"]
-        else:
-            caption = "No description available."
-        return jsonify({"description": caption})
+        async with httpx.AsyncClient() as client:
+            describe_response = await client.post(describe_url, headers=headers, content=image_bytes)
+            describe_response.raise_for_status()
+            analysis = describe_response.json()
+            if analysis.get("description") and analysis["description"].get("captions"):
+                caption = analysis["description"]["captions"][0]["text"]
+            else:
+                caption = "No description available."
+
+            read_response = await client.post(read_url, headers=headers, content=image_bytes)
+            read_response.raise_for_status()
+            operation_url = read_response.headers.get("Operation-Location")
+
+            if not operation_url:
+                extracted_text = "No text extracted."
+            else:
+                status = None
+                for attempt in range(10):
+                    poll_response = await client.get(operation_url, headers={"Ocp-Apim-Subscription-Key": subscription_key})
+                    poll_response.raise_for_status()
+                    result = poll_response.json()
+                    status = result.get("status")
+                    if status == "succeeded" or status == "failed":
+                        break
+                    await asyncio.sleep(1)
+                if status == "succeeded":
+                    lines = []
+                    for page in result.get("analyzeResult", {}).get("readResults", []):
+                        for line in page.get("lines", []):
+                            lines.append(line.get("text", ""))
+                    extracted_text = "\n".join(lines) if lines else "No text extracted."
+                else:
+                    extracted_text = "No text extracted."
+
+        return jsonify({"description": caption, "extracted_text": extracted_text})
     except Exception as e:
-        logging.exception("Failed to generate image description")
-        return jsonify({"error": "Failed to describe image"}), 500
+        logging.exception("Failed to generate image description and extract text")
+        return jsonify({"error": "Failed to describe image and extract text"}), 500
 
 
 @bp.route("/")

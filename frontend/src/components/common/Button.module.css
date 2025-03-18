@@ -2,12 +2,12 @@
     width: 86px;
     height: 32px;
     border-radius: 4px;
-    background: linear-gradient(135deg, #0f6cbd 0%, #2d87c3 51.04%, #8dddd8 100%);
+    background: radial-gradient(109.81% 107.82% at 100.1% 90.19%, #00DA96 33.63%, #47E0B0 70.31%, #7EE8C7 100%);
     padding: 5px 12px;
 }
 
     .shareButtonRoot:hover {
-        background: radial-gradient(109.81% 107.82% at 100.1% 90.19%, #00DA96 33.63%, #47E0B0 70.31%, #7EE8C7 100%);
+        background: linear-gradient(135deg, #0f6cbd 0%, #2d87c3 51.04%, #8dddd8 100%);
     }
 
     .shareButtonRoot span {
@@ -37,13 +37,13 @@
     }
 
 .switchAIButtonRoot {
-    width: auto; /* Allow the width to adjust based on text */
+    width: auto; 
     height: 32px;
     border-radius: 4px;
-    background: linear-gradient(135deg, #0f6cbd 0%, #2d87c3 51.04%, #8dddd8 100%);
+    background: radial-gradient(109.81% 107.82% at 100.1% 90.19%, #00DA96 33.63%, #47E0B0 70.31%, #7EE8C7 100%);
     color: #ffffff;
     text-decoration: none;
-    padding: 8px 16px; /* Ensures spacing around the text */
+    padding: 8px 16px; 
     font-size: 14px;
     font-weight: 600;
     display: flex;
@@ -51,11 +51,11 @@
     justify-content: center;
     cursor: pointer;
     transition: background 0.3s ease, transform 0.2s ease;
-    white-space: nowrap; /* Prevents the text from breaking into multiple lines */
+    white-space: nowrap;
 }
 
     .switchAIButtonRoot:hover {
-        background: radial-gradient(109.81% 107.82% at 100.1% 90.19%, #00DA96 33.63%, #47E0B0 70.31%, #7EE8C7 100%);
+        background: linear-gradient(135deg, #0f6cbd 0%, #2d87c3 51.04%, #8dddd8 100%);
     }
 
     .switchAIButtonRoot:focus {

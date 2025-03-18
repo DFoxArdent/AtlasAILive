@@ -146,7 +146,7 @@ const Chat = () => {
         appStateContext?.dispatch({ type: 'SET_ANSWER_EXEC_RESULT', payload: { answerId: answerId, exec_result: exec_results } });
     };
 
-    const processResultMessage = (resultMessage: ChatMessage, userMessage: ChatMessage) => {
+    const processResultMessage = (resultMessage: ChatMessage, userMessage: ChatMessage, conversationId?: string) => {
         if (typeof resultMessage.content === "string" && resultMessage.content.includes('all_exec_results')) {
             const parsedExecResults = JSON.parse(resultMessage.content) as AzureSqlServerExecResults;
             setExecResults(parsedExecResults.all_exec_results);
@@ -158,7 +158,8 @@ const Chat = () => {
         if (resultMessage.role === ASSISTANT) {
             setAnswerId(resultMessage.id);
             assistantContent += resultMessage.content;
-            assistantMessage = { ...assistantMessage, ...resultMessage, content: assistantContent };
+            assistantMessage = { ...assistantMessage, ...resultMessage };
+            assistantMessage.content = assistantContent;
 
             if (resultMessage.context) {
                 toolMessage = {
@@ -170,8 +171,16 @@ const Chat = () => {
             }
         }
 
-        if (resultMessage.role === TOOL) {
-            toolMessage = resultMessage;
+        if (resultMessage.role === TOOL) toolMessage = resultMessage;
+
+        if (!conversationId) {
+            isEmpty(toolMessage)
+                ? setMessages([...messages, userMessage, assistantMessage])
+                : setMessages([...messages, userMessage, toolMessage, assistantMessage]);
+        } else {
+            isEmpty(toolMessage)
+                ? setMessages([...messages, assistantMessage])
+                : setMessages([...messages, toolMessage, assistantMessage]);
         }
     };
 
@@ -253,7 +262,7 @@ const Chat = () => {
                                         setShowLoadingMessage(false);
                                     }
                                     result.choices[0].messages.forEach(resultObj => {
-                                        processResultMessage(resultObj, userMessage);
+                                        processResultMessage(resultObj, userMessage, conversationId);
                                     });
                                 } else if (result.error) {
                                     throw Error(result.error);
@@ -270,15 +279,9 @@ const Chat = () => {
                         }
                     });
                 }
-                if (conversation) {
-                    if (isEmpty(toolMessage)) {
-                        conversation.messages.push(assistantMessage);
-                    } else {
-                        conversation.messages.push(toolMessage, assistantMessage);
-                    }
-                    appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: conversation });
-                    setMessages([...conversation.messages]);
-                }
+                /*conversation.messages.push(toolMessage, assistantMessage);*/
+                appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: conversation });
+                /*setMessages([...messages, toolMessage, assistantMessage]);*/
             }
         } catch (e) {
             if (!abortController.signal.aborted) {
@@ -298,9 +301,9 @@ const Chat = () => {
                     content: errorMessage,
                     date: new Date().toISOString()
                 };
-                conversation!.messages.push(errorChatMsg);
+                conversation.messages.push(errorChatMsg);
                 appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: conversation });
-                setMessages([...conversation!.messages]);
+                setMessages([...messages, errorChatMsg]);
             } else {
                 setMessages([...messages, userMessage]);
             }
@@ -393,7 +396,6 @@ const Chat = () => {
                     return;
                 }
                 appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: resultConversation });
-                setMessages([...resultConversation.messages]);
                 return;
             }
             if (response?.body) {
@@ -425,7 +427,7 @@ const Chat = () => {
                                         setShowLoadingMessage(false);
                                     }
                                     result.choices[0].messages.forEach(resultObj => {
-                                        processResultMessage(resultObj, userMessage);
+                                        processResultMessage(resultObj, userMessage, conversationId);
                                     });
                                 }
                                 runningText = '';
@@ -453,11 +455,10 @@ const Chat = () => {
                         abortFuncs.current = abortFuncs.current.filter(a => a !== abortController);
                         return;
                     }
-                    if (isEmpty(toolMessage)) {
-                        resultConversation.messages.push(assistantMessage);
-                    } else {
-                        resultConversation.messages.push(toolMessage, assistantMessage);
-                    }
+                    // Keep the conversation update so that the final bot message is recorded.
+                    isEmpty(toolMessage)
+                        ? resultConversation.messages.push(assistantMessage)
+                        : resultConversation.messages.push(toolMessage, assistantMessage);
                 } else {
                     resultConversation = {
                         id: result.history_metadata.conversation_id,
@@ -465,11 +466,10 @@ const Chat = () => {
                         messages: [userMessage],
                         date: result.history_metadata.date
                     };
-                    if (isEmpty(toolMessage)) {
-                        resultConversation.messages.push(assistantMessage);
-                    } else {
-                        resultConversation.messages.push(toolMessage, assistantMessage);
-                    }
+                    // Keep the conversation update here as well.
+                    isEmpty(toolMessage)
+                        ? resultConversation.messages.push(assistantMessage)
+                        : resultConversation.messages.push(toolMessage, assistantMessage);
                 }
                 if (!resultConversation) {
                     setIsLoading(false);
@@ -478,7 +478,10 @@ const Chat = () => {
                     return;
                 }
                 appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: resultConversation });
-                setMessages([...resultConversation.messages]);
+                // Remove the following UI state update to avoid duplicate messages in the UI.
+                // isEmpty(toolMessage)
+                //     ? setMessages([...messages, assistantMessage])
+                //     : setMessages([...messages, toolMessage, assistantMessage]);
             }
         } catch (e) {
             if (!abortController.signal.aborted) {
@@ -511,6 +514,12 @@ const Chat = () => {
                 } else {
                     if (!result.history_metadata) {
                         console.error('Error retrieving data.', result);
+                        let errorChatMsg: ChatMessage = {
+                            id: uuid(),
+                            role: ERROR,
+                            content: errorMessage,
+                            date: new Date().toISOString()
+                        };
                         setMessages([...messages, userMessage, errorChatMsg]);
                         setIsLoading(false);
                         setShowLoadingMessage(false);
@@ -532,7 +541,7 @@ const Chat = () => {
                     return;
                 }
                 appStateContext?.dispatch({ type: 'UPDATE_CURRENT_CHAT', payload: resultConversation });
-                setMessages([...resultConversation.messages]);
+                setMessages([...messages, errorChatMsg]);
             } else {
                 setMessages([...messages, userMessage]);
             }
@@ -544,6 +553,7 @@ const Chat = () => {
         }
         return abortController.abort();
     };
+
 
     const clearChat = async () => {
         const confirmClear = window.confirm("Are you sure you want to clear the chat history? This action cannot be undone.");
@@ -803,9 +813,9 @@ const Chat = () => {
                                 <img src={logo} className={styles.chatIcon} aria-hidden="true" />
                                 <h1 className={styles.chatEmptyStateTitle}>{ui?.chat_title}</h1>
                                 <h2 className={styles.chatEmptyStateSubtitle}>
-                                    This chatbot does <strong>not</strong> have access to additional information about Ardent.
+                                    This chatbot is configured with additional knowledge about Ardent.
                                     <br />
-                                    Click the button in the top right to switch to the Ardent knowledge base.
+                                    Click the button in the top right to switch to the GPT-4o knowledge base.
                                 </h2>
                             </Stack>
                         ) : (
@@ -1140,7 +1150,7 @@ const Chat = () => {
                             </Stack>
                             <QuestionInput
                                 clearOnSend
-                                placeholder="This is a non-ardent knowledge base containing information from GPT-4o. Type a new question..."
+                                placeholder="This is the Ardent knowledge base. Type a new question..."
                                 disabled={isLoading}
                                 onSend={(question, id, silent = false) => {
                                     if (silent) {

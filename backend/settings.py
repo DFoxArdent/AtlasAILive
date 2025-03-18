@@ -44,8 +44,8 @@ class _UiSettings(BaseSettings):
     title: str = "Contoso"
     logo: Optional[str] = None
     chat_logo: Optional[str] = None
-    chat_title: str = "Start chatting - Standard AI"
-    chat_description: str = "This chatbot does not have access to additional information about Ardent Management."
+    chat_title: str = "Start chatting - Atlas AI"
+    chat_description: str = "This chatbot is configured with additional knowledge about Ardent Management."
     favicon: str = "/favicon.ico"
     show_share_button: bool = True
     show_chat_history_button: bool = True
