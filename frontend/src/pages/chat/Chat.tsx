@@ -1063,7 +1063,7 @@ const Chat = () => {
                                       },
                                       rootHovered: {
                                         background:
-                                          'linear-gradient(135deg, #3a8fdc 0%, #4ea8d8 51.04%, #b3e8e5 100%)',
+                                          'radial-gradient(109.81% 107.82% at 100.1% 90.19%, #00DA96 33.63%, #47E0B0 70.31%, #7EE8C7 100%)',
                                       },
                                       rootDisabled: {
                                         background: '#F0F0F0',
@@ -1088,22 +1088,20 @@ const Chat = () => {
                                     },
                                     rootHovered: {
                                       background:
-                                        'linear-gradient(135deg, #3a8fdc 0%, #4ea8d8 51.04%, #b3e8e5 100%)',
+                                        'radial-gradient(109.81% 107.82% at 100.1% 90.19%, #00DA96 33.63%, #47E0B0 70.31%, #7EE8C7 100%)',
                                     },
                                     rootDisabled: {
                                       background: '#F0F0F0',
                                     },
                                   }}
                                   className={
-                                    appStateContext?.state.isCosmosDBAvailable?.status !==
-                                    CosmosDBStatus.NotConfigured
+                                    appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured
                                       ? styles.clearChatBroom
                                       : styles.clearChatBroomNoCosmos
                                   }
                                   iconProps={{ iconName: 'Broom' }}
                                   onClick={
-                                    appStateContext?.state.isCosmosDBAvailable?.status !==
-                                    CosmosDBStatus.NotConfigured
+                                    appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured
                                       ? clearChat
                                       : newChat
                                   }
@@ -1116,6 +1114,7 @@ const Chat = () => {
                                   dialogContentProps={errorDialogContentProps}
                                   modalProps={modalProps}
                                 />
+
 
                             </Stack>
                             <QuestionInput
