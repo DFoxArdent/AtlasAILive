@@ -2,7 +2,7 @@
 import { FontIcon, Stack, TextField, Spinner } from '@fluentui/react';
 import { SendRegular } from '@fluentui/react-icons';
 
-import Send from '../../assets/Send.svg';
+import Send from '../../assets/Send 1.svg';
 import DocUpload from '../../assets/DocUpload.svg';
 
 import styles from './QuestionInput.module.css';

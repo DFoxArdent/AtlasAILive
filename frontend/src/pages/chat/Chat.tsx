@@ -1050,73 +1050,73 @@ const Chat = () => {
                                 </Stack>
                             )}
                             <Stack>
-                                {appStateContext?.state.isCosmosDBAvailable?.status !==
-                                    CosmosDBStatus.NotConfigured && (
-                                        <CommandBarButton
-                                            role="button"
-                                            styles={{
-                                                icon: {
-                                                    color: '#FFFFFF',
-                                                },
-                                                iconDisabled: {
-                                                    color: '#BDBDBD !important',
-                                                },
-                                                root: {
-                                                    color: '#FFFFFF',
-                                                    background:
-                                                        'radial-gradient(circle, #87F5D3 1%, #00DA96 60%)',
-                                                },
-                                                rootDisabled: {
-                                                    background: '#F0F0F0',
-                                                },
-                                            }}
-                                            className={styles.newChatIcon}
-                                            iconProps={{ iconName: 'Add' }}
-                                            onClick={newChat}
-                                            disabled={disabledButton()}
-                                            aria-label="start a new chat button"
-                                        />
-                                    )}
-                                <CommandBarButton
+                                {appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured && (
+                                  <CommandBarButton
                                     role="button"
                                     styles={{
-                                        icon: {
-                                            color: '#FFFFFF',
-                                        },
-                                        iconDisabled: {
-                                            color: '#BDBDBD !important',
-                                        },
-                                        root: {
-                                            color: '#FFFFFF',
-                                            background:
-                                                'radial-gradient(circle, #87F5D3 1%, #00DA96 60%)',
-                                        },
-                                        rootDisabled: {
-                                            background: '#F0F0F0',
-                                        },
+                                      icon: { color: '#FFFFFF' },
+                                      iconDisabled: { color: '#BDBDBD !important' },
+                                      root: {
+                                        color: '#FFFFFF',
+                                        background:
+                                          'linear-gradient(135deg, #0f6cbd 0%, #2d87c3 51.04%, #8dddd8 100%)',
+                                      },
+                                      rootHovered: {
+                                        background:
+                                          'linear-gradient(135deg, #3a8fdc 0%, #4ea8d8 51.04%, #b3e8e5 100%)',
+                                      },
+                                      rootDisabled: {
+                                        background: '#F0F0F0',
+                                      },
                                     }}
-                                    className={
-                                        appStateContext?.state.isCosmosDBAvailable?.status !==
-                                            CosmosDBStatus.NotConfigured
-                                            ? styles.clearChatBroom
-                                            : styles.clearChatBroomNoCosmos
-                                    }
-                                    iconProps={{ iconName: 'Broom' }}
-                                    onClick={
-                                        appStateContext?.state.isCosmosDBAvailable?.status !==
-                                            CosmosDBStatus.NotConfigured
-                                            ? clearChat
-                                            : newChat
-                                    }
+                                    className={styles.newChatIcon}
+                                    iconProps={{ iconName: 'Add' }}
+                                    onClick={newChat}
                                     disabled={disabledButton()}
-                                    aria-label="clear chat button"
+                                    aria-label="start a new chat button"
+                                  />
+                                )}
+                                <CommandBarButton
+                                  role="button"
+                                  styles={{
+                                    icon: { color: '#FFFFFF' },
+                                    iconDisabled: { color: '#BDBDBD !important' },
+                                    root: {
+                                      color: '#FFFFFF',
+                                      background:
+                                        'linear-gradient(135deg, #0f6cbd 0%, #2d87c3 51.04%, #8dddd8 100%)',
+                                    },
+                                    rootHovered: {
+                                      background:
+                                        'linear-gradient(135deg, #3a8fdc 0%, #4ea8d8 51.04%, #b3e8e5 100%)',
+                                    },
+                                    rootDisabled: {
+                                      background: '#F0F0F0',
+                                    },
+                                  }}
+                                  className={
+                                    appStateContext?.state.isCosmosDBAvailable?.status !==
+                                    CosmosDBStatus.NotConfigured
+                                      ? styles.clearChatBroom
+                                      : styles.clearChatBroomNoCosmos
+                                  }
+                                  iconProps={{ iconName: 'Broom' }}
+                                  onClick={
+                                    appStateContext?.state.isCosmosDBAvailable?.status !==
+                                    CosmosDBStatus.NotConfigured
+                                      ? clearChat
+                                      : newChat
+                                  }
+                                  disabled={disabledButton()}
+                                  aria-label="clear chat button"
                                 />
                                 <Dialog
-                                    hidden={hideErrorDialog}
-                                    onDismiss={handleErrorDialogClose}
-                                    dialogContentProps={errorDialogContentProps}
-                                    modalProps={modalProps}
+                                  hidden={hideErrorDialog}
+                                  onDismiss={handleErrorDialogClose}
+                                  dialogContentProps={errorDialogContentProps}
+                                  modalProps={modalProps}
                                 />
+
                             </Stack>
                             <QuestionInput
                                 clearOnSend
