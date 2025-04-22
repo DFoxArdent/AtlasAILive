@@ -187,7 +187,7 @@ async def upload_document():
             msg = extract_msg.Message(msg_stream)
             msg_message = msg.body or ""
             msg_subject = msg.subject or ""
-            msg_attachments = [att.longFilename for att in msg.attachments]
+            msg_attachments = [att.longFilename or att.shortFilename or "Unnamed Attachment" for att in msg.attachments]
             extracted_text = f"Subject: {msg_subject}\n\n{msg_message}\n\nAttachments: {', '.join(msg_attachments)}"
         except Exception as e:
             logging.exception("Failed to process MSG file")
