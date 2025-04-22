@@ -46,6 +46,9 @@ from dotenv import load_dotenv
 load_dotenv()
 from pptx import Presentation
 import pandas as pd
+import extract_msg
+import email
+from bs4 import BeautifulSoup
 
 bp = Blueprint("routes", __name__, static_folder="static", template_folder="static")
 
@@ -178,6 +181,43 @@ async def upload_document():
             logging.exception("Failed to process PowerPoint")
             return jsonify({"error": f"Failed to process PowerPoint: {str(e)}"}), 400
 
+    elif filename.endswith(".msg"):
+        try:
+            msg_stream = BytesIO(file_bytes)
+            msg = extract_msg.Message(msg_stream)
+            msg_message = msg.body or ""
+            msg_subject = msg.subject or ""
+            msg_attachments = [att.longFilename for att in msg.attachments]
+            extracted_text = f"Subject: {msg_subject}\n\n{msg_message}\n\nAttachments: {', '.join(msg_attachments)}"
+        except Exception as e:
+            logging.exception("Failed to process MSG file")
+            return jsonify({"error": f"Failed to process MSG file: {str(e)}"}), 400
+
+    elif filename.endswith(".eml"):
+        try:
+            msg = email.message_from_bytes(file_bytes)
+            body = ""
+            subject = msg.get("Subject", "")
+
+            if msg.is_multipart():
+                for part in msg.walk():
+                    content_type = part.get_content_type()
+                    if content_type == "text/plain":
+                        body = part.get_payload(decode=True).decode(errors="ignore")
+                        break
+                    elif content_type == "text/html":
+                        html = part.get_payload(decode=True).decode(errors="ignore")
+                        soup = BeautifulSoup(html, "html.parser")
+                        body = soup.get_text()
+                        break
+            else:
+                body = msg.get_payload(decode=True).decode(errors="ignore")
+
+            extracted_text = f"Subject: {subject}\n\n{body.strip()}"
+        except Exception as e:
+            logging.exception("Failed to process EML file")
+            return jsonify({"error": f"Failed to process EML file: {str(e)}"}), 400
+
     elif filename.endswith((".xlsx", ".xls", ".xlsm")):
         try:
             dfs = pd.read_excel(BytesIO(file_bytes), sheet_name=None)
@@ -199,6 +239,7 @@ async def upload_document():
 
     chunks = chunk_text_by_tokens(extracted_text, TOKEN_LIMIT)
     return jsonify({"chunks": chunks})
+
 
 
 @bp.route("/")

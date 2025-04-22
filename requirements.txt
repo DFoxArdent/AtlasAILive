@@ -19,3 +19,5 @@ pycryptodome
 pypdfium2
 azure-ai-formrecognizer
 python-pptx
+extract_msg
+beautifulsoup4

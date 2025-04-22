@@ -1119,7 +1119,7 @@ const Chat = () => {
                             </Stack>
                             <QuestionInput
                                 clearOnSend
-                                placeholder="This is a non-ardent knowledge base containing information from GPT-4o. Type a new question..."
+                                placeholder="This is a non-Ardent knowledge base containing information from GPT-4o. Type a new question..."
                                 disabled={isLoading}
                                 onSend={(question, id, silent = false) => {
                                     if (silent) {
