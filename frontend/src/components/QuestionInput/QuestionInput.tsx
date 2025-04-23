@@ -88,6 +88,8 @@ export const QuestionInput = ({
             lowerName.endsWith('.csv')
         ) {
             return <FontIcon iconName="ExcelLogo" className={styles.documentIcon} />;
+        } else if (lowerName.endsWith('.msg') || lowerName.endsWith('.eml')) {
+            return <FontIcon iconName="Mail" className={styles.documentIcon} />;
         } else if (lowerName.endsWith('.txt')) {
             return <FontIcon iconName="Page" className={styles.documentIcon} />;
         } else {
@@ -304,6 +306,8 @@ export const QuestionInput = ({
             lowerName.endsWith('.xls') ||
             lowerName.endsWith('.xlsx') ||
             lowerName.endsWith('.xlsm') ||
+            lowerName.endsWith('.msg') ||
+            lowerName.endsWith('.eml') ||
             lowerName.endsWith('.csv')
         ) {
             setBase64Image(null);
@@ -373,7 +377,7 @@ export const QuestionInput = ({
                         type="file"
                         id="documentInput"
                         onChange={handleDocumentSelect}
-                        accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.xls,.xlsx,.xlsm,.csv"
+                        accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.xls,.xlsx,.xlsm,.csv,.msg,.eml"
                         className={styles.fileInput}
                         ref={documentInputRef}
                     />
