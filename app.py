@@ -486,11 +486,15 @@ def prepare_model_args(request_body, request_headers):
     }
 
     if app_settings.datasource:
+        datasource_copy = copy.deepcopy(app_settings.datasource)
+
+        selected_index = request_body.get("selected_index")
+        if selected_index and hasattr(datasource_copy, "set_index"):
+            datasource_copy.set_index(selected_index)
+
         model_args["extra_body"] = {
             "data_sources": [
-                app_settings.datasource.construct_payload_configuration(
-                    request=request
-                )
+                datasource_copy.construct_payload_configuration(request=request)
             ]
         }
 

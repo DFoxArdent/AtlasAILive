@@ -87,6 +87,7 @@ export type ChatResponse = {
 
 export type ConversationRequest = {
   messages: ChatMessage[]
+  selected_index?: string
 }
 
 export type UserInfo = {

@@ -336,15 +336,17 @@ export const QuestionInput = ({
 
             {isDragging && <div className={styles.dropZoneOverlay} />}
 
-            <TextField
+            <textarea
                 className={styles.questionInputTextArea}
                 placeholder={placeholder}
-                multiline
-                resizable={false}
-                borderless
                 value={question}
-                onChange={(_ev, newValue) => setQuestion(newValue || '')}
-                onKeyDown={(event) => event.key === 'Enter' && !event.shiftKey && sendQuestion()}
+                onChange={(e) => setQuestion(e.target.value)}
+                onKeyDown={(event) => {
+                    if (event.key === 'Enter' && !event.shiftKey) {
+                        event.preventDefault(); // prevent newline
+                        sendQuestion();
+                    }
+                }}
                 onPaste={onPaste}
             />
 

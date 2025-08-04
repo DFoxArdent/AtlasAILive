@@ -37,13 +37,12 @@
     }
 
 .switchAIButtonRoot {
-    width: auto; 
+    width: auto;
     height: 32px;
     border-radius: 4px;
     background: radial-gradient(109.81% 107.82% at 100.1% 90.19%, #00DA96 33.63%, #47E0B0 70.31%, #7EE8C7 100%);
     color: #ffffff;
-    text-decoration: none;
-    padding: 8px 16px; 
+    padding: 0 12px;
     font-size: 14px;
     font-weight: 600;
     display: flex;
@@ -54,16 +53,43 @@
     white-space: nowrap;
 }
 
-    .switchAIButtonRoot:hover {
+    .switchAIButtonRoot label {
+        margin-right: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        color: white;
+    }
+
+.dropdown {
+    background: transparent;
+    color: #ffffff;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background 0.3s ease, transform 0.2s ease;
+    appearance: auto; 
+    -webkit-appearance: auto;
+    -moz-appearance: auto;
+}
+
+    .dropdown option {
+        background-color: #1b1b1b;
+        color: white;
+    }
+
+    .dropdown:hover {
         background: linear-gradient(135deg, #0f6cbd 0%, #2d87c3 51.04%, #8dddd8 100%);
     }
 
-    .switchAIButtonRoot:focus {
+    .dropdown:focus {
         outline: none;
         box-shadow: 0 0 0 2px #0f6cbd;
     }
 
-    .switchAIButtonRoot:active {
+    .dropdown:active {
         transform: scale(0.98);
     }
 

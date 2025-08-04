@@ -17,6 +17,7 @@ const Layout = () => {
     const [shareLabel, setShareLabel] = useState<string | undefined>("Share");
     const [hideHistoryLabel, setHideHistoryLabel] = useState<string>("Hide chat history");
     const [showHistoryLabel, setShowHistoryLabel] = useState<string>("Show chat history");
+
     const appStateContext = useContext(AppStateContext);
     const ui = appStateContext?.state.frontendSettings?.ui;
 
@@ -37,6 +38,11 @@ const Layout = () => {
 
     const handleHistoryClick = () => {
         appStateContext?.dispatch({ type: 'TOGGLE_CHAT_HISTORY' });
+    };
+
+    const handleIndexChange = (selectedIndex: string) => {
+        console.log("Selected index:", selectedIndex);
+        appStateContext?.dispatch({ type: 'SET_SELECTED_INDEX', payload: selectedIndex });
     };
 
     useEffect(() => {
@@ -80,7 +86,10 @@ const Layout = () => {
                         />
                     </a>
                     <Stack horizontal tokens={{ childrenGap: 4 }} className={styles.shareButtonContainer}>
-                        <SwitchAIButton url="https://atlas-ai-gpt.azurewebsites.net/" />
+                        <SwitchAIButton
+                            options={["standard-responses", "regeneration", "renewables", "transport", "utilities"]}
+                            onChange={handleIndexChange}
+                        />
                         {(appStateContext?.state.isCosmosDBAvailable?.status !== CosmosDBStatus.NotConfigured) &&
                             <HistoryButton onClick={handleHistoryClick} text={appStateContext?.state?.isChatHistoryOpen ? hideHistoryLabel : showHistoryLabel} />
                         }

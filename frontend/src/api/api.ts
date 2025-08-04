@@ -9,7 +9,8 @@ export async function conversationApi(options: ConversationRequest, abortSignal:
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      messages: options.messages
+       messages: options.messages,
+       selected_index: options.selected_index
     }),
     signal: abortSignal
   })
@@ -121,11 +122,13 @@ export const historyGenerate = async (
   if (convId) {
     body = JSON.stringify({
       conversation_id: convId,
-      messages: options.messages
+      messages: options.messages,
+      selected_index: options.selected_index || undefined
     })
   } else {
     body = JSON.stringify({
-      messages: options.messages
+      messages: options.messages,
+      selected_index: options.selected_index || undefined
     })
   }
   const response = await fetch('/history/generate', {

@@ -82,7 +82,13 @@ export const appStateReducer = (state: AppState, action: Action): AppState => {
           [action.payload.answerId]: action.payload.exec_result
         }
       }
+    case 'SET_SELECTED_INDEX':
+        return {
+            ...state,
+            selectedIndex: action.payload
+        }
+
     default:
-      return state
+        return state
   }
 }

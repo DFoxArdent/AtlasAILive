@@ -231,7 +231,8 @@ const Chat = () => {
         const request: ConversationRequest = {
             messages: [
                 ...conversation.messages.filter(m => m.role !== ERROR && !(m as ExtendedChatMessage).isPreview)
-            ]
+            ],
+            selected_index: appStateContext?.state.selectedIndex || undefined
         };
 
         let result = {} as ChatResponse;
@@ -352,12 +353,14 @@ const Chat = () => {
                 request = {
                     messages: [
                         ...conversation.messages.filter(m => m.role !== ERROR && !(m as ExtendedChatMessage).isPreview)
-                    ]
+                    ],
+                    selected_index: appStateContext?.state.selectedIndex || undefined
                 };
             }
         } else {
             request = {
-                messages: [userMessage].filter(m => m.role !== ERROR)
+                messages: [userMessage].filter(m => m.role !== ERROR),
+                selected_index: appStateContext?.state.selectedIndex || undefined
             };
             setMessages(request.messages);
         }
@@ -813,9 +816,9 @@ const Chat = () => {
                                 <img src={logo} className={styles.chatIcon} aria-hidden="true" />
                                 <h1 className={styles.chatEmptyStateTitle}>{ui?.chat_title}</h1>
                                 <h2 className={styles.chatEmptyStateSubtitle}>
-                                    This chatbot is configured with additional knowledge about Ardent.
+                                        This chatbot is enhanced with additional knowledge specific to Ardent’s past tenders.
                                     <br />
-                                    Click the button in the top right to switch to the GPT-4o knowledge base.
+                                        Use the “Select Data Source” dropdown in the top right to switch between different tender data sources.
                                 </h2>
                             </Stack>
                         ) : (
@@ -1150,7 +1153,7 @@ const Chat = () => {
                             </Stack>
                             <QuestionInput
                                 clearOnSend
-                                placeholder="This is the Ardent knowledge base. Type a new question..."
+                                placeholder="This is the Tender knowledge base. Type a new question..."
                                 disabled={isLoading}
                                 onSend={(question, id, silent = false) => {
                                     if (silent) {

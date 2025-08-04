@@ -44,8 +44,8 @@ class _UiSettings(BaseSettings):
     title: str = "Contoso"
     logo: Optional[str] = None
     chat_logo: Optional[str] = None
-    chat_title: str = "Start chatting - Atlas AI"
-    chat_description: str = "This chatbot is configured with additional knowledge about Ardent Management."
+    chat_title: str = "Start chatting - Atlas AI Tenders"
+    chat_description: str = "This chatbot is configured with additional knowledge about Ardent Management's previous Tenders."
     favicon: str = "/favicon.ico"
     show_share_button: bool = True
     show_chat_history_button: bool = True
@@ -251,7 +251,7 @@ class _AzureSearchSettings(BaseSettings, DatasourcePayloadConstructor):
     enable_in_domain: bool = Field(default=True, serialization_alias="in_scope")
     service: str = Field(exclude=True)
     endpoint_suffix: str = Field(default="search.windows.net", exclude=True)
-    index: str = Field(serialization_alias="index_name")
+    index: str = Field(default="", serialization_alias="index_name")
     key: Optional[str] = Field(default=None, exclude=True)
     use_semantic_search: bool = Field(default=False, exclude=True)
     semantic_search_config: str = Field(default="", serialization_alias="semantic_configuration")
@@ -314,6 +314,10 @@ class _AzureSearchSettings(BaseSettings, DatasourcePayloadConstructor):
     @model_validator(mode="after")
     def set_query_type(self) -> Self:
         self.query_type = to_snake(self.query_type)
+
+    def set_index(self, new_index: str) -> None:
+        if new_index and isinstance(new_index, str):
+            self.index = new_index
 
     def _set_filter_string(self, request: Request) -> str:
         if self.permitted_groups_column:
