@@ -67,5 +67,4 @@ jobs:
         id: deploy-to-webapp
         with:
           app-name: 'Atlas-AI-Tenders'
-          slot-name: 'Production'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_d9797b3bd30f4245bbeb8099d2e94f09 }}
