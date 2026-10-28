@@ -106,6 +106,19 @@ def format_non_streaming_response(chatCompletion, history_metadata, apim_request
 
     return {}
 
+def format_context_response(chatCompletionChunk, context, history_metadata, apim_request_id):
+    # Sends the search citations to the frontend as a tool message, as On Your Data did
+    return {
+        "id": chatCompletionChunk.id,
+        "model": chatCompletionChunk.model,
+        "created": chatCompletionChunk.created,
+        "object": chatCompletionChunk.object,
+        "choices": [{"messages": [{"role": "tool", "content": json.dumps(context)}]}],
+        "history_metadata": history_metadata,
+        "apim-request-id": apim_request_id,
+    }
+
+
 def format_stream_response(chatCompletionChunk, history_metadata, apim_request_id):
     response_obj = {
         "id": chatCompletionChunk.id,
