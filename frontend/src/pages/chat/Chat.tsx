@@ -36,6 +36,7 @@ import {
 import { Answer } from "../../components/Answer";
 import { QuestionInput } from "../../components/QuestionInput";
 import { ChatHistoryPanel } from "../../components/ChatHistory/ChatHistoryPanel";
+import { MarkdownLink } from "../../components/common/MarkdownLink";
 import { AppStateContext } from "../../state/AppProvider";
 import { useBoolean } from "@fluentui/react-hooks";
 
@@ -1225,15 +1226,16 @@ const Chat = () => {
                                 {activeCitation.title}
                             </h5>
                             <div tabIndex={0}>
-                                <ReactMarkdown
-                                    linkTarget="_blank"
-                                    className={styles.citationPanelContent}
-                                    children={DOMPurify.sanitize(activeCitation.content, {
-                                        ALLOWED_TAGS: XSSAllowTags,
-                                    })}
-                                    remarkPlugins={[remarkGfm]}
-                                    rehypePlugins={[rehypeRaw]}
-                                />
+                                <div className={styles.citationPanelContent}>
+                                    <ReactMarkdown
+                                        children={DOMPurify.sanitize(activeCitation.content, {
+                                            ALLOWED_TAGS: XSSAllowTags,
+                                        })}
+                                        remarkPlugins={[remarkGfm]}
+                                        rehypePlugins={[rehypeRaw]}
+                                        components={{ a: MarkdownLink }}
+                                    />
+                                </div>
                             </div>
                         </Stack.Item>
                     )}

@@ -1,18 +1,18 @@
 .container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
 }
 
 .chatRoot {
-  flex: 1;
-  display: flex;
-  margin-top: 0px;
-  margin-bottom: 20px;
-  margin-left: 20px;
-  margin-right: 20px;
-  gap: 5px;
+    flex: 1;
+    display: flex;
+    margin-top: 0px;
+    margin-bottom: 20px;
+    margin-left: 20px;
+    margin-right: 20px;
+    gap: 5px;
 }
 
 .chatContainer {
@@ -20,7 +20,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    background: url('../../assets/Ardent Background 1.png') no-repeat center center;
+    background: url('../../assets/Ardent background 1.PNG') no-repeat center center;
     background-size: cover;
     box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.14), 0px 0px 2px rgba(0, 0, 0, 0.12);
     border-radius: 8px;
@@ -29,35 +29,35 @@
 }
 
 .chatEmptyState {
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
 }
 
 .chatEmptyStateTitle {
-  font-style: normal;
-  font-weight: 700;
-  font-size: 36px;
-  display: flex;
-  align-items: flex-end;
-  text-align: center;
-  line-height: 24px;
-  margin-top: 36px;
-  margin-bottom: 0px;
+    font-style: normal;
+    font-weight: 700;
+    font-size: 36px;
+    display: flex;
+    align-items: flex-end;
+    text-align: center;
+    line-height: 24px;
+    margin-top: 36px;
+    margin-bottom: 0px;
 }
 
 .chatEmptyStateSubtitle {
-  margin-top: 20px;
-  font-style: normal;
-  font-weight: 400;
-  font-size: 16px;
-  line-height: 150%;
-  align-items: flex-end;
-  text-align: center;
-  letter-spacing: -0.01em;
-  color: #616161;
+    margin-top: 20px;
+    font-style: normal;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 150%;
+    align-items: flex-end;
+    text-align: center;
+    letter-spacing: -0.01em;
+    color: #616161;
 }
 
 .chatIcon {
@@ -66,21 +66,21 @@
 }
 
 .chatMessageStream {
-  flex-grow: 1;
-  max-width: 1028px;
-  width: 100%;
-  overflow-y: auto;
-  padding-left: 24px;
-  padding-right: 24px;
-  display: flex;
-  flex-direction: column;
-  margin-top: 24px;
+    flex-grow: 1;
+    max-width: 1028px;
+    width: 100%;
+    overflow-y: auto;
+    padding-left: 24px;
+    padding-right: 24px;
+    display: flex;
+    flex-direction: column;
+    margin-top: 24px;
 }
 
 .chatMessageUser {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 12px;
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 12px;
 }
 
 
@@ -104,54 +104,52 @@
 }
 
 .chatMessageGpt::before {
-    content: ''; 
+    content: '';
     display: inline-block;
-    width: 20px; 
+    width: 20px;
     height: 20px;
     background-image: url('../../assets/Ardent A.svg');
-    background-size: contain; 
+    background-size: contain;
     background-repeat: no-repeat;
-    margin-right: 10px; 
+    margin-right: 10px;
     align-self: center;
 }
 
 .chatMessageError {
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow:
-    rgba(182, 52, 67, 1) 1px 1px 2px,
-    rgba(182, 52, 67, 1) 0px 0px 1px;
-  color: #242424;
-  flex: none;
-  order: 0;
-  flex-grow: 0;
-  max-width: 800px;
-  margin-bottom: 12px;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: rgba(182, 52, 67, 1) 1px 1px 2px, rgba(182, 52, 67, 1) 0px 0px 1px;
+    color: #242424;
+    flex: none;
+    order: 0;
+    flex-grow: 0;
+    max-width: 800px;
+    margin-bottom: 12px;
 }
 
 .chatMessageErrorContent {
-  font-family: 'Segoe UI';
-  font-style: normal;
-  font-weight: 400;
-  font-size: 14px;
-  line-height: 22px;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  gap: 12px;
-  align-items: center;
+    font-family: 'Segoe UI';
+    font-style: normal;
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 22px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    gap: 12px;
+    align-items: center;
 }
 
 .chatInput {
-  position: sticky;
-  flex: 0 0 100px;
-  padding-top: 12px;
-  padding-bottom: 24px;
-  padding-left: 24px;
-  padding-right: 24px;
-  width: calc(100% - 100px);
-  max-width: 1028px;
-  margin-bottom: 50px;
-  margin-top: 8px;
+    position: sticky;
+    flex: 0 0 100px;
+    padding-top: 12px;
+    padding-bottom: 24px;
+    padding-left: 24px;
+    padding-right: 24px;
+    width: calc(100% - 100px);
+    max-width: 1028px;
+    margin-bottom: 50px;
+    margin-top: 8px;
 }
 
 .clearChatBroom {
@@ -172,7 +170,7 @@
 }
 
     .clearChatBroom:hover::after {
-        content: "Click here to clear the chat"; 
+        content: "Click here to clear the chat";
         position: absolute;
         bottom: -30px;
         left: 50%;
@@ -204,9 +202,9 @@
 }
 
     .clearChatBroomNoCosmos:hover::after {
-        content: "Click here to clear the chat"; 
+        content: "Click here to clear the chat";
         position: absolute;
-        bottom: -30px; 
+        bottom: -30px;
         left: 50%;
         transform: translateX(-50%);
         background-color: #fff;
@@ -268,24 +266,24 @@
 }
 
 .stopGeneratingIcon {
-  width: 14px;
-  height: 14px;
-  color: #424242;
+    width: 14px;
+    height: 14px;
+    color: #424242;
 }
 
 .stopGeneratingText {
-  width: 103px;
-  height: 20px;
-  font-style: normal;
-  font-weight: 600;
-  font-size: 12px;
-  line-height: 20px;
-  display: flex;
-  align-items: center;
-  color: #242424;
-  flex: none;
-  order: 0;
-  flex-grow: 0;
+    width: 103px;
+    height: 20px;
+    font-style: normal;
+    font-weight: 600;
+    font-size: 12px;
+    line-height: 20px;
+    display: flex;
+    align-items: center;
+    color: #242424;
+    flex: none;
+    order: 0;
+    flex-grow: 0;
 }
 
 .citationPanel {
@@ -307,141 +305,141 @@
 }
 
 .citationPanelHeaderContainer {
-  width: 100%;
+    width: 100%;
 }
 
 .citationPanelHeader {
-  font-style: normal;
-  font-weight: 600;
-  font-size: 18px;
-  line-height: 24px;
-  color: #000000;
-  flex: none;
-  order: 0;
-  flex-grow: 0;
+    font-style: normal;
+    font-weight: 600;
+    font-size: 18px;
+    line-height: 24px;
+    color: #000000;
+    flex: none;
+    order: 0;
+    flex-grow: 0;
 }
 
 .citationPanelDismiss {
-  width: 18px;
-  height: 18px;
-  color: #424242;
+    width: 18px;
+    height: 18px;
+    color: #424242;
 }
 
-.citationPanelDismiss:hover {
-  background-color: #d1d1d1;
-  cursor: pointer;
-}
+    .citationPanelDismiss:hover {
+        background-color: #d1d1d1;
+        cursor: pointer;
+    }
 
 .citationPanelTitle {
-  font-style: normal;
-  font-weight: 600;
-  font-size: 16px;
-  line-height: 22px;
-  color: #323130;
-  margin-top: 12px;
-  margin-bottom: 12px;
+    font-style: normal;
+    font-weight: 600;
+    font-size: 16px;
+    line-height: 22px;
+    color: #323130;
+    margin-top: 12px;
+    margin-bottom: 12px;
 }
 
-.citationPanelTitle:hover {
-  text-decoration: underline;
-  cursor: pointer;
-}
+    .citationPanelTitle:hover {
+        text-decoration: underline;
+        cursor: pointer;
+    }
 
 .citationPanelContent {
-  font-style: normal;
-  font-weight: 400;
-  font-size: 14px;
-  line-height: 20px;
-  color: #000000;
-  flex: none;
-  order: 1;
-  align-self: stretch;
-  flex-grow: 0;
+    font-style: normal;
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 20px;
+    color: #000000;
+    flex: none;
+    order: 1;
+    align-self: stretch;
+    flex-grow: 0;
 }
 
 .exectResultList {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  border-bottom: 1px solid #ccc;
-  margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    border-bottom: 1px solid #ccc;
+    margin-top: 12px;
 }
 
-.exectResultList:first-child {
-  margin-top: 0;
-}
+    .exectResultList:first-child {
+        margin-top: 0;
+    }
 
-.exectResultList:last-child {
-  border-bottom: none;
-}
+    .exectResultList:last-child {
+        border-bottom: none;
+    }
 
-.exectResultList > p {
-  display: flex;
-  flex-direction: row;
-  gap: 4px;
-  margin: 0;
-  margin-bottom: 16px;
-}
+    .exectResultList > p {
+        display: flex;
+        flex-direction: row;
+        gap: 4px;
+        margin: 0;
+        margin-bottom: 16px;
+    }
 
-.exectResultList > span {
-  font-weight: 600;
-}
+    .exectResultList > span {
+        font-weight: 600;
+    }
 
 a {
-  padding-left: 5px;
-  padding-right: 5px;
+    padding-left: 5px;
+    padding-right: 5px;
 }
 
 .viewSourceButton {
-  font-style: normal;
-  font-weight: 600;
-  font-size: 12px;
-  line-height: 16px;
-  color: #115ea3;
-  flex-direction: row;
-  align-items: center;
-  padding: 4px 6px;
-  gap: 4px;
-  border: 1px solid #d1d1d1;
-  border-radius: 4px;
+    font-style: normal;
+    font-weight: 600;
+    font-size: 12px;
+    line-height: 16px;
+    color: #115ea3;
+    flex-direction: row;
+    align-items: center;
+    padding: 4px 6px;
+    gap: 4px;
+    border: 1px solid #d1d1d1;
+    border-radius: 4px;
 }
 
-.viewSourceButton:hover {
-  text-decoration: underline;
-  cursor: pointer;
-}
+    .viewSourceButton:hover {
+        text-decoration: underline;
+        cursor: pointer;
+    }
 
 .uploadedImageChat {
-  max-width: 150px;
-  max-height: 150px;
-  border-radius: 5px;
-  margin-top: 5px;
-  border: 1px solid #ccc;
+    max-width: 150px;
+    max-height: 150px;
+    border-radius: 5px;
+    margin-top: 5px;
+    border: 1px solid #ccc;
 }
 
 @media (max-width: 480px) {
-  .chatInput {
-    width: 90%;
-    max-width: 90%;
-  }
+    .chatInput {
+        width: 90%;
+        max-width: 90%;
+    }
 
-  .newChatIcon {
-    left: 0px;
-  }
+    .newChatIcon {
+        left: 0px;
+    }
 
-  .clearChatBroom {
-    left: 0px;
-  }
+    .clearChatBroom {
+        left: 0px;
+    }
 
-  .clearChatBroomNoCosmos {
-    left: 0px;
-  }
+    .clearChatBroomNoCosmos {
+        left: 0px;
+    }
 
-  .chatEmptyStateTitle {
-    line-height: 36px;
-  }
+    .chatEmptyStateTitle {
+        line-height: 36px;
+    }
 
-  .citationPanel {
-    max-width: 100%;
-  }
+    .citationPanel {
+        max-width: 100%;
+    }
 }

@@ -17,7 +17,7 @@ from quart import (
     current_app,
 )
 
-from openai import AsyncAzureOpenAI
+from openai import AsyncOpenAI
 from azure.identity.aio import (
     DefaultAzureCredential,
     get_bearer_token_provider
@@ -25,14 +25,13 @@ from azure.identity.aio import (
 from backend.auth.auth_utils import get_authenticated_user_details
 from backend.security.ms_defender_utils import get_msdefender_user_json
 from backend.history.cosmosdbservice import CosmosConversationClient
-from backend.settings import (
-    app_settings,
-    MINIMUM_SUPPORTED_AZURE_OPENAI_PREVIEW_API_VERSION
-)
+from backend.settings import app_settings
+from backend.retrieval import ground_messages
 from backend.utils import (
     format_as_ndjson,
     format_stream_response,
     format_non_streaming_response,
+    format_context_response,
     convert_to_pf_format,
     format_pf_non_streaming_response,
 )
@@ -323,7 +322,7 @@ DEBUG = os.environ.get("DEBUG", "false")
 if DEBUG.lower() == "true":
     logging.basicConfig(level=logging.DEBUG)
 
-USER_AGENT = "GitHubSampleWebApp/AsyncAzureOpenAI/1.0.0"
+USER_AGENT = "GitHubSampleWebApp/AsyncOpenAI/1.0.0"
 
 
 frontend_settings = {
@@ -347,19 +346,27 @@ frontend_settings = {
 
 MS_DEFENDER_ENABLED = os.environ.get("MS_DEFENDER_ENABLED", "true").lower() == "true"
 
+# Azure AI Search is queried by the app itself, as On Your Data (data_sources) has been retired
+USE_SEARCH_RETRIEVAL = (
+    app_settings.base_settings.datasource_type == "AzureCognitiveSearch"
+    and app_settings.datasource is not None
+)
+
+
+def get_foundry_base_url(endpoint: str) -> str:
+    # Microsoft Foundry serves models through the OpenAI v1 API at <endpoint>/openai/v1/
+    endpoint = endpoint.rstrip("/")
+    if endpoint.endswith("/openai/v1"):
+        return f"{endpoint}/"
+    if endpoint.endswith("/openai"):
+        return f"{endpoint}/v1/"
+    return f"{endpoint}/openai/v1/"
+
 
 async def init_openai_client():
     azure_openai_client = None
-    
-    try:
-        if (
-            app_settings.azure_openai.preview_api_version
-            < MINIMUM_SUPPORTED_AZURE_OPENAI_PREVIEW_API_VERSION
-        ):
-            raise ValueError(
-                f"The minimum supported Azure OpenAI preview API version is '{MINIMUM_SUPPORTED_AZURE_OPENAI_PREVIEW_API_VERSION}'"
-            )
 
+    try:
         if (
             not app_settings.azure_openai.endpoint and
             not app_settings.azure_openai.resource
@@ -389,13 +396,13 @@ async def init_openai_client():
             raise ValueError("AZURE_OPENAI_MODEL is required")
 
         default_headers = {"x-ms-useragent": USER_AGENT}
+        if aoai_api_key:
+            default_headers["api-key"] = aoai_api_key
 
-        azure_openai_client = AsyncAzureOpenAI(
-            api_version=app_settings.azure_openai.preview_api_version,
-            api_key=aoai_api_key,
-            azure_ad_token_provider=ad_token_provider,
+        azure_openai_client = AsyncOpenAI(
+            api_key=aoai_api_key or ad_token_provider,
             default_headers=default_headers,
-            azure_endpoint=endpoint,
+            base_url=get_foundry_base_url(endpoint),
         )
 
         return azure_openai_client
@@ -485,7 +492,7 @@ def prepare_model_args(request_body, request_headers):
         "user": user_json
     }
 
-    if app_settings.datasource:
+    if app_settings.datasource and not USE_SEARCH_RETRIEVAL:
         model_args["extra_body"] = {
             "data_sources": [
                 app_settings.datasource.construct_payload_configuration(
@@ -572,17 +579,22 @@ async def send_chat_request(request_body, request_headers):
             
     request_body['messages'] = filtered_messages
     model_args = prepare_model_args(request_body, request_headers)
+    context = None
 
     try:
         azure_openai_client = await init_openai_client()
+        if USE_SEARCH_RETRIEVAL:
+            model_args["messages"], context = await ground_messages(
+                app_settings, azure_openai_client, model_args["messages"], request
+            )
         raw_response = await azure_openai_client.chat.completions.with_raw_response.create(**model_args)
         response = raw_response.parse()
-        apim_request_id = raw_response.headers.get("apim-request-id") 
+        apim_request_id = raw_response.headers.get("apim-request-id")
     except Exception as e:
         logging.exception("Exception in send_chat_request")
         raise e
 
-    return response, apim_request_id
+    return response, apim_request_id, context
 
 
 async def complete_chat_request(request_body, request_headers):
@@ -596,17 +608,26 @@ async def complete_chat_request(request_body, request_headers):
             app_settings.promptflow.citations_field_name
         )
     else:
-        response, apim_request_id = await send_chat_request(request_body, request_headers)
+        response, apim_request_id, context = await send_chat_request(request_body, request_headers)
         history_metadata = request_body.get("history_metadata", {})
-        return format_non_streaming_response(response, history_metadata, apim_request_id)
+        response_obj = format_non_streaming_response(response, history_metadata, apim_request_id)
+        if context and response_obj:
+            response_obj["choices"][0]["messages"].insert(
+                0, {"role": "tool", "content": json.dumps(context)}
+            )
+        return response_obj
 
 
 async def stream_chat_request(request_body, request_headers):
-    response, apim_request_id = await send_chat_request(request_body, request_headers)
+    response, apim_request_id, context = await send_chat_request(request_body, request_headers)
     history_metadata = request_body.get("history_metadata", {})
-    
+
     async def generate():
+        context_sent = context is None
         async for completionChunk in response:
+            if not context_sent:
+                yield format_context_response(completionChunk, context, history_metadata, apim_request_id)
+                context_sent = True
             yield format_stream_response(completionChunk, history_metadata, apim_request_id)
 
     return generate()
