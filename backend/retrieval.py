@@ -7,7 +7,8 @@ import httpx
 from azure.core.credentials import AzureKeyCredential
 from azure.identity.aio import DefaultAzureCredential, get_bearer_token_provider
 from azure.search.documents.aio import SearchClient
-from azure.search.documents.models import VectorizedQuery
+from azure.search.documents.indexes.aio import SearchIndexClient
+from azure.search.documents.models import VectorizableTextQuery, VectorizedQuery
 
 # Replaces Azure OpenAI On Your Data (retired 14 October 2026): the app now queries the
 # Azure AI Search (Foundry IQ) index itself and grounds the Foundry model with the results.
@@ -25,6 +26,9 @@ SEARCH_QUERY_PROMPT = (
 HIDDEN_DOCUMENT_PATTERN = re.compile(
     r"\[hidden-document-content\][\s\S]*?\[/hidden-document-content\]"
 )
+
+# Index definitions, read once per index, used when the field mapping settings are not set
+_index_cache = {}
 
 
 def get_message_text(content) -> str:
@@ -99,14 +103,48 @@ async def get_query_embedding(app_settings, openai_client, text: str) -> List[fl
     )
 
 
-def build_citation(doc: dict, datasource, index: int) -> dict:
-    excluded = set(datasource.vector_columns or [])
-    excluded.update(
+async def get_search_index(datasource, credential):
+    if datasource.index not in _index_cache:
+        async with SearchIndexClient(datasource.endpoint, credential) as client:
+            _index_cache[datasource.index] = await client.get_index(datasource.index)
+    return _index_cache[datasource.index]
+
+
+def get_mapped_columns(datasource) -> set:
+    return {
         c for c in (datasource.title_column, datasource.url_column, datasource.filename_column) if c
+    }
+
+
+def get_vector_fields(search_index) -> List[str]:
+    return [f.name for f in search_index.fields if f.vector_search_dimensions]
+
+
+def get_content_fields(search_index, datasource) -> List[str]:
+    excluded = get_mapped_columns(datasource)
+    return [
+        f.name for f in search_index.fields
+        if f.searchable and not f.hidden and not f.vector_search_dimensions
+        and f.type in ("Edm.String", "Collection(Edm.String)") and f.name not in excluded
+    ]
+
+
+def has_vectorizer(search_index, vector_fields: List[str]) -> bool:
+    if not search_index.vector_search or not search_index.vector_search.profiles:
+        return False
+    vectorized_profiles = {
+        p.name for p in search_index.vector_search.profiles if p.vectorizer_name
+    }
+    return all(
+        f.vector_search_profile_name in vectorized_profiles
+        for f in search_index.fields if f.name in vector_fields
     )
-    if datasource.content_columns:
-        content_fields = datasource.content_columns
-    else:
+
+
+def build_citation(doc: dict, datasource, index: int, content_fields: Optional[List[str]] = None) -> dict:
+    excluded = set(datasource.vector_columns or [])
+    excluded.update(get_mapped_columns(datasource))
+    if not content_fields:
         content_fields = [
             k for k, v in doc.items()
             if isinstance(v, str) and not k.startswith("@") and k not in excluded
@@ -124,7 +162,44 @@ def build_citation(doc: dict, datasource, index: int) -> dict:
 
 async def search_documents(app_settings, openai_client, query: str, request) -> List[dict]:
     datasource = app_settings.datasource
+    if datasource.key:
+        return await run_search(
+            app_settings, openai_client, query, request, AzureKeyCredential(datasource.key)
+        )
+    async with DefaultAzureCredential() as credential:
+        return await run_search(app_settings, openai_client, query, request, credential)
+
+
+async def run_search(app_settings, openai_client, query: str, request, credential) -> List[dict]:
+    datasource = app_settings.datasource
     query_type = datasource.query_type or "simple"
+    use_vectors = "vector" in query_type
+    vector_fields = datasource.vector_columns
+    content_fields = datasource.content_columns
+    search_index = None
+
+    # On Your Data read missing field mappings from the index definition, so do the same
+    if (use_vectors and not vector_fields) or not content_fields:
+        try:
+            search_index = await get_search_index(datasource, credential)
+        except Exception as e:
+            if use_vectors and not vector_fields:
+                raise ValueError(
+                    "Could not read the vector fields from the search index definition "
+                    f"({e}). Set AZURE_SEARCH_VECTOR_COLUMNS to the index's vector field names."
+                ) from e
+            logging.warning(f"Could not read the search index definition: {e}")
+
+    if search_index is not None:
+        if use_vectors and not vector_fields:
+            vector_fields = get_vector_fields(search_index)
+            if not vector_fields:
+                raise ValueError(
+                    f"The search index '{datasource.index}' has no vector fields, "
+                    "so AZURE_SEARCH_QUERY_TYPE cannot be a vector query type"
+                )
+        if not content_fields:
+            content_fields = get_content_fields(search_index, datasource)
 
     search_kwargs = {"top": datasource.top_k}
 
@@ -144,32 +219,32 @@ async def search_documents(app_settings, openai_client, query: str, request) -> 
         if datasource.semantic_search_config:
             search_kwargs["semantic_configuration_name"] = datasource.semantic_search_config
 
-    if "vector" in query_type:
-        if not datasource.vector_columns:
-            raise ValueError("A vector query type needs AZURE_SEARCH_VECTOR_COLUMNS")
-        vector = await get_query_embedding(app_settings, openai_client, query)
-        search_kwargs["vector_queries"] = [
-            VectorizedQuery(
-                vector=vector,
-                k_nearest_neighbors=datasource.top_k,
-                fields=",".join(datasource.vector_columns),
+    if use_vectors:
+        azure_openai = app_settings.azure_openai
+        has_embedding_settings = azure_openai.embedding_name or azure_openai.embedding_endpoint
+        if (
+            not has_embedding_settings
+            and search_index is not None
+            and has_vectorizer(search_index, vector_fields)
+        ):
+            # The index has its own vectorizer, so the search service embeds the query
+            vector_query = VectorizableTextQuery(
+                text=query, k_nearest_neighbors=datasource.top_k, fields=",".join(vector_fields)
             )
-        ]
+        else:
+            vector = await get_query_embedding(app_settings, openai_client, query)
+            vector_query = VectorizedQuery(
+                vector=vector, k_nearest_neighbors=datasource.top_k, fields=",".join(vector_fields)
+            )
+        search_kwargs["vector_queries"] = [vector_query]
 
     search_text = None if query_type == "vector" else query
 
-    if datasource.key:
-        credential = AzureKeyCredential(datasource.key)
-        async with SearchClient(datasource.endpoint, datasource.index, credential) as client:
-            results = await client.search(search_text, **search_kwargs)
-            docs = [doc async for doc in results]
-    else:
-        async with DefaultAzureCredential() as credential:
-            async with SearchClient(datasource.endpoint, datasource.index, credential) as client:
-                results = await client.search(search_text, **search_kwargs)
-                docs = [doc async for doc in results]
+    async with SearchClient(datasource.endpoint, datasource.index, credential) as client:
+        results = await client.search(search_text, **search_kwargs)
+        docs = [doc async for doc in results]
 
-    return [build_citation(doc, datasource, i) for i, doc in enumerate(docs)]
+    return [build_citation(doc, datasource, i, content_fields) for i, doc in enumerate(docs)]
 
 
 def build_grounding_message(app_settings, citations: List[dict]) -> dict:

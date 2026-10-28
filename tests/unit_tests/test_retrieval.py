@@ -4,6 +4,12 @@ from importlib import import_module, reload
 from types import SimpleNamespace
 
 import pytest
+from azure.search.documents.indexes.models import (
+    SearchField,
+    SearchIndex,
+    VectorSearch,
+    VectorSearchProfile,
+)
 
 from backend import retrieval
 
@@ -61,8 +67,49 @@ class FakeOpenAIClient:
         self.embeddings = SimpleNamespace(create=create_embedding)
 
 
+def make_index(vectorizer_name=None):
+    return SearchIndex(
+        name="search_index",
+        fields=[
+            SearchField(name="id", type="Edm.String", key=True, searchable=False),
+            SearchField(name="chunk", type="Edm.String", searchable=True),
+            SearchField(name="title", type="Edm.String", searchable=True),
+            SearchField(name="secret", type="Edm.String", searchable=True, hidden=True),
+            SearchField(name="text_vector", type="Collection(Edm.Single)", searchable=True,
+                        vector_search_dimensions=2, vector_search_profile_name="profile"),
+        ],
+        vector_search=VectorSearch(
+            profiles=[VectorSearchProfile(name="profile", algorithm_configuration_name="hnsw",
+                                          vectorizer_name=vectorizer_name)],
+        ),
+    )
+
+
+class FakeSearchIndexClient:
+    index = None
+    error = None
+
+    def __init__(self, endpoint, credential):
+        pass
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
+        pass
+
+    async def get_index(self, name):
+        if FakeSearchIndexClient.error:
+            raise FakeSearchIndexClient.error
+        return FakeSearchIndexClient.index
+
+
 @pytest.fixture(autouse=True)
 def fake_search(monkeypatch):
+    FakeSearchIndexClient.index = make_index()
+    FakeSearchIndexClient.error = None
+    monkeypatch.setattr(retrieval, "SearchIndexClient", FakeSearchIndexClient)
+    monkeypatch.setattr(retrieval, "_index_cache", {})
     FakeSearchClient.calls = []
     FakeSearchClient.docs = [
         {"content1": "Holiday policy text", "content2": "More detail", "title": "Holidays",
@@ -187,3 +234,92 @@ async def test_out_of_domain_answers_allowed_when_in_domain_disabled(app_setting
     assert context["citations"] == []
     assert retrieval.NO_DATA_RESPONSE not in grounded[0]["content"]
     assert "general knowledge" in grounded[0]["content"]
+
+
+@pytest.mark.asyncio
+async def test_vector_fields_read_from_index_when_not_configured(app_settings):
+    app_settings.datasource.query_type = "vector_simple_hybrid"
+    app_settings.datasource.vector_columns = None
+    openai_client = FakeOpenAIClient()
+
+    await retrieval.ground_messages(
+        app_settings, openai_client, [{"role": "user", "content": "holidays"}]
+    )
+
+    call = FakeSearchClient.calls[0]
+    assert call["search_text"] == "holidays"
+    assert call["vector_queries"][0].as_dict() == {
+        "vector": [0.1, 0.2], "k": 5, "fields": "text_vector", "kind": "vector"
+    }
+    assert openai_client.embedding_calls == [{"model": "embedding_model", "input": "holidays"}]
+
+
+@pytest.mark.asyncio
+async def test_index_vectorizer_used_without_embedding_settings(app_settings):
+    FakeSearchIndexClient.index = make_index(vectorizer_name="foundry-vectorizer")
+    app_settings.datasource.query_type = "vector_semantic_hybrid"
+    app_settings.datasource.vector_columns = None
+    app_settings.azure_openai.embedding_name = None
+    openai_client = FakeOpenAIClient()
+
+    await retrieval.ground_messages(
+        app_settings, openai_client, [{"role": "user", "content": "holidays"}]
+    )
+
+    assert FakeSearchClient.calls[0]["vector_queries"][0].as_dict() == {
+        "text": "holidays", "k": 5, "fields": "text_vector", "kind": "text"
+    }
+    assert openai_client.embedding_calls == []
+
+
+@pytest.mark.asyncio
+async def test_missing_embedding_settings_without_vectorizer_is_an_error(app_settings):
+    app_settings.datasource.query_type = "vector"
+    app_settings.datasource.vector_columns = None
+    app_settings.azure_openai.embedding_name = None
+
+    with pytest.raises(ValueError, match="AZURE_OPENAI_EMBEDDING_NAME"):
+        await retrieval.ground_messages(
+            app_settings, FakeOpenAIClient(), [{"role": "user", "content": "holidays"}]
+        )
+
+
+@pytest.mark.asyncio
+async def test_unreadable_index_definition_explains_vector_setting(app_settings):
+    FakeSearchIndexClient.error = PermissionError("Forbidden")
+    app_settings.datasource.query_type = "vector"
+    app_settings.datasource.vector_columns = None
+
+    with pytest.raises(ValueError, match="AZURE_SEARCH_VECTOR_COLUMNS"):
+        await retrieval.ground_messages(
+            app_settings, FakeOpenAIClient(), [{"role": "user", "content": "holidays"}]
+        )
+
+
+@pytest.mark.asyncio
+async def test_content_fields_read_from_index_when_not_configured(app_settings):
+    app_settings.datasource.content_columns = None
+    FakeSearchClient.docs = [
+        {"id": "abc123", "chunk": "Holiday policy text", "title": "Holidays", "parent_id": "p1"},
+    ]
+
+    _, context = await retrieval.ground_messages(
+        app_settings, FakeOpenAIClient(), [{"role": "user", "content": "holidays"}]
+    )
+
+    assert "select" not in FakeSearchClient.calls[0]
+    assert context["citations"][0]["content"] == "Holiday policy text"
+    assert context["citations"][0]["title"] == "Holidays"
+
+
+@pytest.mark.asyncio
+async def test_content_fields_fall_back_when_index_definition_unreadable(app_settings):
+    FakeSearchIndexClient.error = PermissionError("Forbidden")
+    app_settings.datasource.content_columns = None
+    FakeSearchClient.docs = [{"chunk": "Holiday policy text", "title": "Holidays"}]
+
+    _, context = await retrieval.ground_messages(
+        app_settings, FakeOpenAIClient(), [{"role": "user", "content": "holidays"}]
+    )
+
+    assert context["citations"][0]["content"] == "Holiday policy text"
