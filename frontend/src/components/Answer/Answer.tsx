@@ -11,6 +11,7 @@ import supersub from 'remark-supersub';
 import { AskResponse, Citation, Feedback, historyMessageFeedback } from '../../api';
 import { XSSAllowTags, XSSAllowAttributes } from '../../constants/sanatizeAllowables';
 import { AppStateContext } from '../../state/AppProvider';
+import { MarkdownLink } from '../common/MarkdownLink';
 import { parseAnswer } from './AnswerParser';
 
 import styles from './Answer.module.css';
@@ -271,7 +272,7 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
     }
 
     const components = {
-        code({ node, ...props }: { node: any;[key: string]: any }) {
+        code({ node, ...props }: { node?: any;[key: string]: any }) {
             let language
             if (props.className) {
                 const match = props.className.match(/language-(\w+)/)
@@ -283,7 +284,8 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
                     {codeString}
                 </SyntaxHighlighter>
             )
-        }
+        },
+        a: MarkdownLink
     }
     return (
         <>
@@ -292,20 +294,20 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
                     <Stack horizontal grow>
                         <Stack.Item grow>
                             {parsedAnswer && (
-                                <ReactMarkdown
-                                    linkTarget="_blank"
-                                    remarkPlugins={[remarkGfm, supersub]}
-                                    children={
-                                        SANITIZE_ANSWER
-                                            ? DOMPurify.sanitize(parsedAnswer?.markdownFormatText, {
-                                                ALLOWED_TAGS: XSSAllowTags,
-                                                ALLOWED_ATTR: XSSAllowAttributes,
-                                            })
-                                            : parsedAnswer?.markdownFormatText
-                                    }
-                                    className={styles.answerText}
-                                    components={components}
-                                />
+                                <div className={styles.answerText}>
+                                    <ReactMarkdown
+                                        remarkPlugins={[remarkGfm, supersub]}
+                                        children={
+                                            SANITIZE_ANSWER
+                                                ? DOMPurify.sanitize(parsedAnswer?.markdownFormatText, {
+                                                    ALLOWED_TAGS: XSSAllowTags,
+                                                    ALLOWED_ATTR: XSSAllowAttributes,
+                                                })
+                                                : parsedAnswer?.markdownFormatText
+                                        }
+                                        components={components}
+                                    />
+                                </div>
                             )}
                         </Stack.Item>
                         <Stack.Item grow={false} className={styles.answerHeader}>

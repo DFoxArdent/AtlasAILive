@@ -17,7 +17,7 @@ from quart import (
     current_app,
 )
 
-from openai import AsyncAzureOpenAI
+from openai import AsyncOpenAI
 from azure.identity.aio import (
     DefaultAzureCredential,
     get_bearer_token_provider
@@ -25,10 +25,7 @@ from azure.identity.aio import (
 from backend.auth.auth_utils import get_authenticated_user_details
 from backend.security.ms_defender_utils import get_msdefender_user_json
 from backend.history.cosmosdbservice import CosmosConversationClient
-from backend.settings import (
-    app_settings,
-    MINIMUM_SUPPORTED_AZURE_OPENAI_PREVIEW_API_VERSION
-)
+from backend.settings import app_settings
 from backend.utils import (
     format_as_ndjson,
     format_stream_response,
@@ -323,7 +320,7 @@ DEBUG = os.environ.get("DEBUG", "false")
 if DEBUG.lower() == "true":
     logging.basicConfig(level=logging.DEBUG)
 
-USER_AGENT = "GitHubSampleWebApp/AsyncAzureOpenAI/1.0.0"
+USER_AGENT = "GitHubSampleWebApp/AsyncOpenAI/1.0.0"
 
 
 frontend_settings = {
@@ -348,18 +345,20 @@ frontend_settings = {
 MS_DEFENDER_ENABLED = os.environ.get("MS_DEFENDER_ENABLED", "true").lower() == "true"
 
 
+def get_foundry_base_url(endpoint: str) -> str:
+    # Microsoft Foundry serves models through the OpenAI v1 API at <endpoint>/openai/v1/
+    endpoint = endpoint.rstrip("/")
+    if endpoint.endswith("/openai/v1"):
+        return f"{endpoint}/"
+    if endpoint.endswith("/openai"):
+        return f"{endpoint}/v1/"
+    return f"{endpoint}/openai/v1/"
+
+
 async def init_openai_client():
     azure_openai_client = None
-    
-    try:
-        if (
-            app_settings.azure_openai.preview_api_version
-            < MINIMUM_SUPPORTED_AZURE_OPENAI_PREVIEW_API_VERSION
-        ):
-            raise ValueError(
-                f"The minimum supported Azure OpenAI preview API version is '{MINIMUM_SUPPORTED_AZURE_OPENAI_PREVIEW_API_VERSION}'"
-            )
 
+    try:
         if (
             not app_settings.azure_openai.endpoint and
             not app_settings.azure_openai.resource
@@ -389,13 +388,13 @@ async def init_openai_client():
             raise ValueError("AZURE_OPENAI_MODEL is required")
 
         default_headers = {"x-ms-useragent": USER_AGENT}
+        if aoai_api_key:
+            default_headers["api-key"] = aoai_api_key
 
-        azure_openai_client = AsyncAzureOpenAI(
-            api_version=app_settings.azure_openai.preview_api_version,
-            api_key=aoai_api_key,
-            azure_ad_token_provider=ad_token_provider,
+        azure_openai_client = AsyncOpenAI(
+            api_key=aoai_api_key or ad_token_provider,
             default_headers=default_headers,
-            azure_endpoint=endpoint,
+            base_url=get_foundry_base_url(endpoint),
         )
 
         return azure_openai_client
